@@ -1,0 +1,54 @@
+
+token hex = /0x[0-9a-fA-F]+/;
+token decimal = /[1-9][0-9]*/;
+token name = /[a-zA-Z][a-zA-Z0-9]*/;
+
+token comma = /,/;
+token open_paren = /\(/;
+token close_paren = /\)/;
+
+token line_ending = /\n/;
+
+token question_mark = /\?/;
+token colon = /:/;
+token fat_arrow = /=>/;
+token maybe_op = /??/;
+
+token assignment_operator = /:=|\+=|-=|\*=|\/=|\/\/=|\.=|\|=|&=|^=|>>=|<<=|>>>=/;
+token equality_operator = /=|==|!=/;
+token comparison_operator = />|>=|<|<=/;
+
+rule S = line | line_ending;
+rule line = expression_statement;
+rule expression_statement = expression;
+
+rule expression = anonymous_function;
+
+rule anonymous_function = 
+    anonymous_function_left fat_arrow expression
+|   assignment
+;
+
+rule anonymous_function_left =
+    call
+|   name
+|   paren_expression
+;
+
+rule paren_expression = open_paren paren_expression_body? close_paren;
+rule paren_expression_body = expression comma paren_expression_body | expression;
+
+rule function_parameter = name | name question_mark;
+
+rule assignment = ternary assignment_operator assignment | ternary;
+rule ternary = ternary question_mark equality colon equality | equality;
+
+rule equality = equality equality_operator comparison | comparison;
+rule comparison = comparison comparison_operator operand | operand;
+
+rule call = call_target open_paren call_parameters? close_paren;
+rule call_parameters = expression | expression comma call_parameters;
+rule call_target = name;
+
+rule operand = name | number | call;
+rule number = hex | decimal;
