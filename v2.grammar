@@ -9,14 +9,31 @@ token close_paren = /\)/;
 
 token line_ending = /\n/;
 
+
+token fat_arrow = /=>/;
+
+
+token assignment_op = /:=|\+=|-=|\*=|\/=|\/\/=|\.=|\|=|&=|^=|>>=|<<=|>>>=/;
 token question_mark = /\?/;
 token colon = /:/;
-token fat_arrow = /=>/;
-token maybe_op = /??/;
+token maybe_op = /\?\?/;
+token or_op = /or|\|\|/;
+token and_op = /and|&&/;
+token not_op = /not|!/;
+token is_in_contains_op = /is|in|contains/;
+token equality_op = /=|==|!=/;
+token comparison_op = />|>=|<|<=/;
 
-token assignment_operator = /:=|\+=|-=|\*=|\/=|\/\/=|\.=|\|=|&=|^=|>>=|<<=|>>>=/;
-token equality_operator = /=|==|!=/;
-token comparison_operator = />|>=|<|<=/;
+token regex_op = /~=/;
+token concat_op = /\./;
+token bitwise_op = /&|^|\|/;
+token add_sub_op = /\+|-/;
+token mul_div_op = /\/|\/\/|\*/;
+token complement_op = /-|!|~|&/;
+token power_op = /\*\*/;
+token increment_op = /\+\+|--/;
+token member_op = /\./;
+token percent = /%/;
 
 rule S = line | line_ending;
 rule line = expression_statement;
@@ -26,7 +43,7 @@ rule expression = anonymous_function;
 
 rule anonymous_function = 
     anonymous_function_left fat_arrow expression
-|   assignment
+|   assignment_expr
 ;
 
 rule anonymous_function_left =
@@ -40,11 +57,26 @@ rule paren_expression_body = expression comma paren_expression_body | expression
 
 rule function_parameter = name | name question_mark;
 
-rule assignment = ternary assignment_operator assignment | ternary;
-rule ternary = ternary question_mark equality colon equality | equality;
+rule assignment_expr = ternary_expr assignment_op assignment_expr | ternary_expr;
+rule ternary_expr = ternary_expr question_mark maybe_expr colon maybe_expr | maybe_expr;
+rule maybe_expr = or_expr maybe_op or_expr | or_expr;
+rule or_expr = or_expr or_op and_expr | and_expr;
+rule and_expr = and_expr and_op not_expr | not_expr;
+rule not_expr = not_op not_expr | is_in_contains_expr;
+rule is_in_contains_expr = equality_expr is_in_contains_op equality_expr | equality_expr;
+rule equality_expr = equality_expr equality_op comparison_expr | comparison_expr;
+rule comparison_expr = comparison_expr comparison_op regex_expr | regex_expr;
 
-rule equality = equality equality_operator comparison | comparison;
-rule comparison = comparison comparison_operator operand | operand;
+rule regex_expr = concat_expr regex_op concat_expr | concat_expr;
+rule concat_expr = concat_expr concat_op bitwise_expr | bitwise_expr;
+rule bitwise_expr = bitwise_expr bitwise_op add_sub_expr | add_sub_expr;
+rule add_sub_expr = add_sub_expr add_sub_op mul_div_expr | mul_div_expr;
+rule mul_div_expr = mul_div_expr mul_div_op complement_expr | complement_expr;
+rule complement_expr = complement_expr complement_op power_expr | power_expr;
+rule power_expr = power_expr power_op increment_expr | increment_expr;
+rule increment_expr = increment_op member_expr | member_expr increment_op | member_expr;
+rule member_expr = member_expr member_op substitution_expr | substitution_expr;
+rule substitution_expr = percent expression percent | operand;
 
 rule call = call_target open_paren call_parameters? close_paren;
 rule call_parameters = expression | expression comma call_parameters;
