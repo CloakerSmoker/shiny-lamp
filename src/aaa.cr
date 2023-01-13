@@ -1,10 +1,10 @@
-# TODO: Write documentation for `Src`
-module Src
+# TODO: Write documentation for `Aaa`
+module Aaa
   VERSION = "0.1.0"
 
   # TODO: Put your code here
 
-  t = Tokenizer.new("main.ahk2", "if += as+d 123 def")
+  t = Tokenizer.new("main.ahk2", "if() += as+d 123 def")
   
   loop do
     begin

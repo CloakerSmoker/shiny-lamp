@@ -92,15 +92,6 @@ enum Operator
     Divide
 end
 
-OperatorSymbols = [
-    {":=", Operator::ColonEquals},
-    {"+=", Operator::PlusEquals},
-    {"+", Operator::Plus},
-    {"-", Operator::Minus},
-    {"*", Operator::Times},
-    {"/", Operator::Divide}
-]
-
 class OperatorToken < Token
     getter value : Operator
 
@@ -113,7 +104,38 @@ class OperatorToken < Token
     end
 end
 
+enum Punctuation
+    Comma
+    OpenParen
+    CloseParen
+end
+
 class PunctuationToken < Token
+    getter value : Punctuation
+
+    def initialize(context : SourceContext, @value)
+        super(context)
+    end
+
+    def to_s(io)
+        io << "punctuation(" << @value << ")"
+    end
+end
+
+Symbols = [
+    {":=", Operator::ColonEquals},
+    {"+=", Operator::PlusEquals},
+    {"+", Operator::Plus},
+    {"-", Operator::Minus},
+    {"*", Operator::Times},
+    {"/", Operator::Divide},
+
+    {",", Punctuation::Comma},
+    {"(", Punctuation::OpenParen},
+    {")", Punctuation::CloseParen}
+]
+
+class LineEndingToken < Token
 end
 
 class DoneException < Exception
@@ -159,11 +181,6 @@ class Tokenizer
     end
 
     def advance
-        if peek_next_character() = '\r'
-            @line_number += 1
-            @line_offsets << @index
-        end
-
         @index += 1
     end
 
@@ -212,6 +229,11 @@ class Tokenizer
             end
 
             return IntegerToken.new(make_source_context(start), @source[start, @index - start].to_i)
+        when '\r'
+            @line_number += 1
+            @line_offsets << @index
+
+            return LineEndingToken.new(make_source_context(start))
         when .whitespace?
             while peek_next_character().whitespace?
                 advance
@@ -223,13 +245,13 @@ class Tokenizer
         
         before = @index
 
-        potentials = OperatorSymbols
+        potentials = Symbols
 
         peek = peek_next_character()
         index = 0
 
         loop do
-            new_potentials = [] of Tuple(String, Operator)
+            new_potentials = typeof(Symbols).new()
 
             potentials.each do |(symbol, value)|
                 if symbol[index]? == peek
@@ -242,7 +264,11 @@ class Tokenizer
 
                 potentials.each do |(symbol, value)|
                     if symbol == operator
-                        return OperatorToken.new(make_source_context(start), value)
+                        if value.is_a?(Operator)
+                            return OperatorToken.new(make_source_context(start), value.as(Operator))
+                        elsif value.is_a?(Punctuation)
+                            return PunctuationToken.new(make_source_context(start), value.as(Punctuation))
+                        end
                     end
                 end 
             end

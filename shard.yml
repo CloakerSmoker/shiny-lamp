@@ -1,0 +1,13 @@
+name: aaa
+version: 0.1.0
+
+authors:
+  - CloakerSmoker <43710474+CloakerSmoker@users.noreply.github.com>
+
+targets:
+  aaa:
+    main: src/aaa.cr
+
+crystal: 1.6.2
+
+license: MIT
