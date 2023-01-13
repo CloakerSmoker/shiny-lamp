@@ -4,7 +4,7 @@ module Aaa
 
   # TODO: Put your code here
 
-  t = Tokenizer.new("main.ahk2", "if() += as+d 123 def")
+  t = TokenMemoizer.new(Tokenizer.new("main.ahk2", "if() += as+d 123 def"))
   
   loop do
     begin

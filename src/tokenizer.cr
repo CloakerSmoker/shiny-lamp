@@ -1,3 +1,9 @@
+
+class CantMergeException < Exception
+    def initialize(@first : LineContext, @second : LineContext)
+    end
+end
+
 class LineContext
     getter file_name : String
     getter source : String
@@ -14,12 +20,48 @@ class LineContext
     def get_body()
         return @source[@start, @length]
     end
+
+    def could_merge(other : LineContext) : Bool
+        return false if other.file_name != @file_name
+        return false if other.line_number != @line_number
+        return true
+    end
+
+    def merge(other : LineContext)
+        raise CantMergeException.new(self, other) if !could_merge(other)
+        
+        if other.start < @start
+            @start = other.start
+        end
+
+        if other.length > @length
+            @length = other.length
+        end
+    end
 end
 
 class SourceContext
-    getter lines : Array(LineContext)
+    getter lines : Array(LineContext) = [] of LineContext
 
     def initialize(@lines)
+    end
+
+    def merge_single(other : LineContext)
+        existing = @lines.select &.could_merge
+
+        if existing.size
+            existing[0].merge(other)
+        else
+            @lines << other
+        end
+    end
+
+    def merge(other : SourceContext)
+        other.lines.each { |line| merge_single(line) }
+    end
+
+    def initialize(*others : SourceContext)
+        others.each { |other| merge(other) }
     end
 end
 
@@ -173,14 +215,14 @@ class Tokenizer
     end
 
     def peek_next_character : Char
-        if at_end?
-            raise DoneException.new()
-        end
+        return '\0' if at_end?
 
         return @source[@index]
     end
 
     def advance
+        raise DoneException.new() if at_end?
+
         @index += 1
     end
 
@@ -188,15 +230,6 @@ class Tokenizer
         result = peek_next_character()
         advance
         return result
-    end
-
-    def next_character_matches(test : Char) : Bool
-        if peek_next_character() = test
-            advance
-            return true
-        end
-
-        return false
     end
 
     def make_line_context(start : Int32) : LineContext
@@ -283,5 +316,44 @@ class Tokenizer
         advance
 
         raise UnexpectedCharacterException.new(make_source_context(start))
+    end
+end
+
+class TokenMemoizer
+    @tokens = [] of Token
+    @index = 0
+    @done = false
+
+    def initialize(@tokenizer : Tokenizer)
+    end
+
+    def get_next_token
+        index = @index
+        @index += 1
+
+        if !@done
+            begin
+                while index >= @tokens.size
+                    tok = @tokenizer.get_next_token()
+                    @tokens << tok
+                end
+            rescue DoneException
+                @done = true
+            end
+        end
+
+        if index >= @tokens.size
+            raise DoneException.new()
+        end
+
+        return @tokens[index]
+    end
+
+    def freeze : Int32
+        return @index
+    end
+
+    def unfreeze(where : Int32)
+        @index = where
     end
 end
