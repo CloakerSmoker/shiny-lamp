@@ -4,19 +4,29 @@ module Aaa
 
   # TODO: Put your code here
 
-  t = TokenMemoizer.new(Tokenizer.new("main.ahk2", "if() += as+d 123 def"))
-  
-  loop do
-    begin
-      puts t.get_next_token()
-    rescue unexpected : UnexpectedCharacterException
-      puts "Unexpected character '#{unexpected.context.lines[0].get_body()}'"
-      break
-    rescue DoneException
-      puts "Done!"
-      break
+  STDIN.each_line do |line|
+    t = TokenMemoizer.new(Tokenizer.new("main.ahk2", line))
+    
+    loop do
+      begin
+        tk = t.get_next_token()
+        puts tk
+
+        break if tk.is_a?(EndToken)
+      rescue unexpected : UnexpectedCharacterException
+        puts "Unexpected character '#{unexpected.context.lines[0].get_body()}'"
+        break
+      end
     end
+
+    t.unfreeze(0)
+
+    p = Parser.new(t)
+
+    puts p.parse_expression()
   end
 end
 
+require "./constants.cr"
 require "./tokenizer.cr"
+require "./parser.cr"

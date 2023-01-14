@@ -47,9 +47,9 @@ class SourceContext
     end
 
     def merge_single(other : LineContext)
-        existing = @lines.select &.could_merge
+        existing = @lines.select { |line| line.could_merge(other) }
 
-        if existing.size
+        if existing.size != 0
             existing[0].merge(other)
         else
             @lines << other
@@ -125,15 +125,6 @@ class KeywordToken < Token
     end
 end
 
-enum Operator
-    ColonEquals
-    PlusEquals
-    Plus
-    Minus
-    Times
-    Divide
-end
-
 class OperatorToken < Token
     getter value : Operator
 
@@ -141,15 +132,33 @@ class OperatorToken < Token
         super(context)
     end
 
+    def is_prefix?
+        return PrefixOperators.has_key?(@value)
+    end
+    def prefix_precedence : Int32
+        return PrefixOperators[@value]
+    end
+
+    def is_binary?
+        return BinaryOperators.has_key?(@value)
+    end
+    def binary_precedence : Int32
+        return BinaryOperators[@value][0]
+    end
+    def associativity : Associativity
+        return BinaryOperators[@value][1]
+    end
+
+    def is_suffix?
+        return SuffixOperators.has_key?(@value)
+    end
+    def suffix_precedence : Int32
+        return SuffixOperators[@value]
+    end
+
     def to_s(io)
         io << "operator(" << @value << ")"
     end
-end
-
-enum Punctuation
-    Comma
-    OpenParen
-    CloseParen
 end
 
 class PunctuationToken < Token
@@ -164,20 +173,10 @@ class PunctuationToken < Token
     end
 end
 
-Symbols = [
-    {":=", Operator::ColonEquals},
-    {"+=", Operator::PlusEquals},
-    {"+", Operator::Plus},
-    {"-", Operator::Minus},
-    {"*", Operator::Times},
-    {"/", Operator::Divide},
-
-    {",", Punctuation::Comma},
-    {"(", Punctuation::OpenParen},
-    {")", Punctuation::CloseParen}
-]
-
 class LineEndingToken < Token
+end
+
+class EndToken < Token
 end
 
 class DoneException < Exception
@@ -327,26 +326,39 @@ class TokenMemoizer
     def initialize(@tokenizer : Tokenizer)
     end
 
-    def get_next_token
-        index = @index
-        @index += 1
-
+    def populate_tokens_to_index(index)
         if !@done
             begin
                 while index >= @tokens.size
-                    tok = @tokenizer.get_next_token()
-                    @tokens << tok
+                    @tokens << @tokenizer.get_next_token()
                 end
             rescue DoneException
                 @done = true
             end
         end
+    end
+
+    def get_next_token
+        index = @index
+        @index += 1
+
+        populate_tokens_to_index(index)
 
         if index >= @tokens.size
-            raise DoneException.new()
+            return EndToken.new(SourceContext.new([] of LineContext))
         end
 
         return @tokens[index]
+    end
+
+    def peek_next_token
+        populate_tokens_to_index(@index)
+
+        if @index >= @tokens.size
+            return EndToken.new(SourceContext.new([] of LineContext))
+        end
+
+        return @tokens[@index]
     end
 
     def freeze : Int32
