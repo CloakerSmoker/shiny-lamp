@@ -63,6 +63,8 @@ enum Marker
     PlusPlus
     MinusMinus
 
+    Maybe
+
     Dot
     OpenIndex
     CloseIndex
@@ -141,6 +143,8 @@ Symbols = [
 
     {"++", Marker::PlusPlus},
     {"--", Marker::MinusMinus},
+
+    {"_?", Marker::Maybe},
 
     {".", Marker::Dot},
 
@@ -261,6 +265,8 @@ PrefixOperators = {
 SuffixOperators = {
     Marker::PlusPlus => 17,
     Marker::MinusMinus => 17,
+
+    Marker::Maybe => 18,
 
     Marker::OpenParen => 19,
 

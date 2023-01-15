@@ -269,6 +269,8 @@ class Tokenizer
                 advance
             end
 
+            # tokenizer hack for dot concatination operator
+
             if peek_next_character() = '.'
                 before = @index
 
@@ -306,6 +308,12 @@ class Tokenizer
 
                 potentials.each do |(symbol, value)|
                     if symbol == found
+                        # tokenizer hack for suffix 'maybe' operator
+
+                        if value == Marker::QuestionMark && peek_next_character().in_set?(")}],")
+                            return SymbolToken.new(make_source_context(start), Marker::Maybe)
+                        end
+
                         return SymbolToken.new(make_source_context(start), value)
                     end
                 end 
