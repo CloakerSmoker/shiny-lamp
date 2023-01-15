@@ -125,8 +125,8 @@ class KeywordToken < Token
     end
 end
 
-class OperatorToken < Token
-    getter value : Operator
+class SymbolToken < Token
+    getter value : Marker
 
     def initialize(context : SourceContext, @value)
         super(context)
@@ -135,41 +135,37 @@ class OperatorToken < Token
     def is_prefix?
         return PrefixOperators.has_key?(@value)
     end
-    def prefix_precedence : Int32
+    def prefix_binding_power : Int32
         return PrefixOperators[@value]
     end
 
     def is_binary?
         return BinaryOperators.has_key?(@value)
     end
-    def binary_precedence : Int32
-        return BinaryOperators[@value][0]
-    end
-    def associativity : Associativity
-        return BinaryOperators[@value][1]
+    def binary_binding_power : Tuple(Int32, Int32)
+        associativity = BinaryOperators[@value][1]
+
+        left = BinaryOperators[@value][0]
+        right = left
+
+        if associativity == Associativity::Left
+            right += 1
+        elsif associativity == Associativity::Right
+            left += 1
+        end
+
+        return {left, right}
     end
 
     def is_suffix?
         return SuffixOperators.has_key?(@value)
     end
-    def suffix_precedence : Int32
+    def suffix_binding_power : Int32
         return SuffixOperators[@value]
     end
 
     def to_s(io)
         io << "operator(" << @value << ")"
-    end
-end
-
-class PunctuationToken < Token
-    getter value : Punctuation
-
-    def initialize(context : SourceContext, @value)
-        super(context)
-    end
-
-    def to_s(io)
-        io << "punctuation(" << @value << ")"
     end
 end
 
@@ -292,15 +288,11 @@ class Tokenizer
             end
 
             if new_potentials.size == 0
-                operator = @source[start, index]
+                found = @source[start, index]
 
                 potentials.each do |(symbol, value)|
-                    if symbol == operator
-                        if value.is_a?(Operator)
-                            return OperatorToken.new(make_source_context(start), value.as(Operator))
-                        elsif value.is_a?(Punctuation)
-                            return PunctuationToken.new(make_source_context(start), value.as(Punctuation))
-                        end
+                    if symbol == found
+                        return SymbolToken.new(make_source_context(start), value)
                     end
                 end 
             end

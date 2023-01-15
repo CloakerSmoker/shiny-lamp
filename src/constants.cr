@@ -1,29 +1,45 @@
-enum Operator
+enum Marker
     ColonEquals
     PlusEquals
     Plus
     Minus
     Times
     Divide
-end
 
-enum Punctuation
+    Dot
+    Substitution
+    
+    PlusPlus
+    MinusMinus
+    
     Comma
     OpenParen
     CloseParen
+    
+    OpenIndex
+    CloseIndex
 end
 
 Symbols = [
-    {":=", Operator::ColonEquals},
-    {"+=", Operator::PlusEquals},
-    {"+", Operator::Plus},
-    {"-", Operator::Minus},
-    {"*", Operator::Times},
-    {"/", Operator::Divide},
+    {":=", Marker::ColonEquals},
+    {"+=", Marker::PlusEquals},
+    {"+", Marker::Plus},
+    {"-", Marker::Minus},
+    {"*", Marker::Times},
+    {"/", Marker::Divide},
 
-    {",", Punctuation::Comma},
-    {"(", Punctuation::OpenParen},
-    {")", Punctuation::CloseParen}
+    {".", Marker::Dot},
+    {"%", Marker::Substitution},
+
+    {"[", Marker::OpenIndex},
+    {"]", Marker::CloseIndex},
+
+    {"++", Marker::PlusPlus},
+    {"--", Marker::MinusMinus},
+
+    {",", Marker::Comma},
+    {"(", Marker::OpenParen},
+    {")", Marker::CloseParen}
 ]
 
 enum Associativity
@@ -32,15 +48,21 @@ enum Associativity
 end
 
 BinaryOperators = {
-    Operator::ColonEquals => { 1, Associativity::Right },
-    Operator::Plus => { 2, Associativity::Left },
-    Operator::Minus => { 2, Associativity::Left }
+    Marker::ColonEquals => { 1, Associativity::Right },
+    Marker::Plus => { 2, Associativity::Left },
+    Marker::Minus => { 2, Associativity::Left },
+    Marker::Dot => { 11, Associativity::Left }
 }
 
 PrefixOperators = {
-    Operator::Minus => 3
+    Marker::Minus => 3,
+    Marker::PlusPlus => 10,
+    Marker::MinusMinus => 10
 }
 
 SuffixOperators = {
-
-} of Operator => Int32
+    Marker::PlusPlus => 10,
+    Marker::MinusMinus => 10,
+    Marker::OpenParen => 11,
+    Marker::OpenIndex => 12
+}
