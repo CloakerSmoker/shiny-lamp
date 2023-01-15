@@ -37,6 +37,8 @@ enum Marker
     Greater
     GreaterEquals
 
+    Concatinate
+
     BitwiseAnd
     BitwiseOr
     BitwiseXor
@@ -112,6 +114,9 @@ Symbols = [
     {"<=", Marker::LessEquals},
     {">", Marker::Greater},
     {">=", Marker::GreaterEquals},
+
+    # also " . " hardwired into the tokenizer
+    {"..", Marker::Concatinate},
 
     {"&", Marker::BitwiseAnd},
     {"|", Marker::BitwiseOr},
@@ -204,7 +209,7 @@ BinaryOperators = {
     Marker::Greater => { 9, Associativity::Left },
     Marker::GreaterEquals => { 9, Associativity::Left },
 
-    # 10 for concatination
+    Marker::Concatinate => { 10, Associativity::Left },
 
     Marker::BitwiseAnd => { 11, Associativity::Left },
     Marker::BitwiseOr => { 11, Associativity::Left },

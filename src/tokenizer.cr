@@ -269,6 +269,18 @@ class Tokenizer
                 advance
             end
 
+            if peek_next_character() = '.'
+                before = @index
+
+                advance
+
+                if peek_next_character().whitespace?
+                    return SymbolToken.new(make_source_context(before), Marker::Concatinate)
+                else
+                   @index = before 
+                end
+            end
+
             return get_next_token()
         end
 
