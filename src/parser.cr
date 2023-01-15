@@ -101,6 +101,8 @@ class Parser
             return IdentifierExpression.new(token.as(IdentifierToken))
         elsif token = next_token_matches { |t| t.is_a?(IntegerToken) }
             return IntegerExpression.new(token.as(IntegerToken))
+        elsif token = next_token_matches { |t| t.is_a?(StringToken) }
+            return StringExpression.new(token.as(StringToken))
         elsif open_paren = next_token_matches { |t| t.as(SymbolToken).value.open_paren? }
 
             before_anonymous = freeze()

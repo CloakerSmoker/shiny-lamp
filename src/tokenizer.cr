@@ -78,6 +78,10 @@ class StringToken < Token
     def initialize(context : SourceContext, @value)
         super(context)
     end
+
+    def to_s(io)
+        io << "string('" << @value << "')"
+    end
 end
 
 class IdentifierToken < Token
@@ -165,7 +169,7 @@ class SymbolToken < Token
     end
 
     def to_s(io)
-        io << "operator(" << @value << ")"
+        io << "symbol(" << @value << ")"
     end
 end
 
@@ -259,6 +263,18 @@ class Tokenizer
             end
 
             return IntegerToken.new(make_source_context(start), @source[start, @index - start].to_i)
+        when '"'
+            advance
+
+            while peek_next_character() != '"'
+                advance
+            end
+
+            string = @source[start + 1, @index - start - 1]
+
+            advance
+            
+            return StringToken.new(make_source_context(start), string)
         when '\r'
             @line_number += 1
             @line_offsets << @index
@@ -271,7 +287,7 @@ class Tokenizer
 
             # tokenizer hack for dot concatination operator
 
-            if peek_next_character() = '.'
+            if peek_next_character() == '.'
                 before = @index
 
                 advance
@@ -285,7 +301,6 @@ class Tokenizer
 
             return get_next_token()
         end
-
         
         before = @index
 
@@ -299,6 +314,7 @@ class Tokenizer
 
             potentials.each do |(symbol, value)|
                 if symbol[index]? == peek
+
                     new_potentials << {symbol, value}
                 end
             end
@@ -319,6 +335,7 @@ class Tokenizer
                 end 
             end
             
+            potentials = new_potentials
             index += 1
             advance
             peek = peek_next_character()

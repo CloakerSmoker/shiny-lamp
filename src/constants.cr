@@ -18,8 +18,8 @@ enum Marker
 
     OrMaybe
 
-    Or
-    And
+    LogicalOr
+    LogicalAnd
 
     LowNot
 
@@ -39,7 +39,7 @@ enum Marker
 
     Concatinate
 
-    BitwiseAnd
+    And
     BitwiseOr
     BitwiseXor
 
@@ -56,7 +56,7 @@ enum Marker
 
     Not
     BitwiseNot
-    Reference
+    # BitwiseAnd is already defined as 'And' for references AND bitwise
 
     Power
 
@@ -98,8 +98,8 @@ Symbols = [
 
     {"??", Marker::OrMaybe},
 
-    {"||", Marker::Or},
-    {"&&", Marker::And},
+    {"||", Marker::LogicalOr},
+    {"&&", Marker::LogicalAnd},
 
     # dummies for printing, actually defined as KeywordSymbols
     {"not", Marker::LowNot},
@@ -120,7 +120,7 @@ Symbols = [
     # also " . " hardwired into the tokenizer
     {"..", Marker::Concatinate},
 
-    {"&", Marker::BitwiseAnd},
+    {"&", Marker::And},
     {"|", Marker::BitwiseOr},
     {"^", Marker::BitwiseXor},
 
@@ -137,7 +137,7 @@ Symbols = [
 
     {"!", Marker::Not},
     {"~", Marker::BitwiseNot},
-    {"&", Marker::Reference},
+    # '&' alright defined
 
     {"**", Marker::Power},
 
@@ -161,8 +161,8 @@ Symbols = [
 ]
 
 KeywordSymbols = {
-    "or" => Marker::Or,
-    "and" => Marker::And,
+    "or" => Marker::LogicalOr,
+    "and" => Marker::LogicalAnd,
     "not" => Marker::LowNot,
     "is" => Marker::Is,
     "in" => Marker::In,
@@ -193,9 +193,9 @@ BinaryOperators = {
 
     Marker::OrMaybe => { 3, Associativity::Left },
 
-    Marker::Or => { 4, Associativity::Left },
+    Marker::LogicalOr => { 4, Associativity::Left },
 
-    Marker::And => { 5, Associativity::Left },
+    Marker::LogicalAnd => { 5, Associativity::Left },
 
     # 6 for LowNot
 
@@ -215,10 +215,10 @@ BinaryOperators = {
 
     Marker::Concatinate => { 10, Associativity::Left },
 
-    Marker::BitwiseAnd => { 11, Associativity::Left },
+    Marker::And => { 11, Associativity::Left },
     Marker::BitwiseOr => { 11, Associativity::Left },
     Marker::BitwiseXor => { 11, Associativity::Left },
-
+    
     Marker::LeftShift => { 12, Associativity::Left },
     Marker::RightShift => { 12, Associativity::Left },
     Marker::RightRotate => { 12, Associativity::Left },
@@ -253,7 +253,7 @@ PrefixOperators = {
     Marker::Minus => 15,
     Marker::Not => 15,
     Marker::BitwiseNot => 15,
-    Marker::Reference => 15,
+    Marker::And => 15,
 
     Marker::PlusPlus => 17,
     Marker::MinusMinus => 17,

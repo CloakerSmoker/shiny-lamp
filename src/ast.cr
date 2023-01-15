@@ -85,6 +85,20 @@ class IdentifierExpression < ExpressionNode
     end
 end
 
+class StringExpression < ExpressionNode
+    getter token : StringToken
+    getter value : String
+
+    def initialize(@token)
+        @value = @token.value
+        super(@token.context)
+    end
+
+    def to_s(io)
+        io << '"' << @value << '"'
+    end
+end
+
 class CallExpression < ExpressionNode
     getter target : ExpressionNode
     getter parameters : Array(ExpressionNode)

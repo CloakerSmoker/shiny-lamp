@@ -5,6 +5,8 @@ module Aaa
   # TODO: Put your code here
 
   STDIN.each_line do |line|
+    puts "Input: '#{line}'"
+
     t = TokenMemoizer.new(Tokenizer.new("main.ahk2", line))
     
     loop do
