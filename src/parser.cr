@@ -47,12 +47,71 @@ class Parser
         return token.as(Token)
     end
 
-    def parse_operand : ExpressionNode
+    def parse_fat_arrow : ExpressionNode
+        name = nil
+        maybe_name = nil
+        parameters = [] of IdentifierExpression
+
+        # name() => body
+        # param1 => body
+        # (param1) => body
+
         if token = next_token_matches { |t| t.is_a?(IdentifierToken) }
+            maybe_name = token.as(IdentifierToken)
+        end
+        
+        if next_token_matches { |t| t.as(SymbolToken).value.open_paren? } 
+            name = maybe_name
+
+            loop do
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_paren? }
+                
+                parameter = expect("Anonymous function parameter") { |t| t.is_a?(IdentifierToken) }
+
+                parameters << IdentifierExpression.new(parameter.as(IdentifierToken))
+
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_paren? }
+
+                expect("Comma between anonymous function parameters") { |t| t.as(SymbolToken).value.comma? }
+            end
+        elsif maybe_name
+            parameters << IdentifierExpression.new(maybe_name.as(IdentifierToken))
+        end
+
+        expect("Fat arrow") { |t| t.as(SymbolToken).value.fat_arrow? }
+
+        body = parse_expression()
+
+        return AnonymousFunctionExpression.new(name, parameters, body)
+    end
+
+    def parse_operand : ExpressionNode
+        start = freeze()
+
+        if token = next_token_matches { |t| t.is_a?(IdentifierToken) }
+            before_anonymous = freeze()
+            
+            begin
+                unfreeze(start)
+                return parse_fat_arrow()
+            rescue e
+                unfreeze(before_anonymous)
+            end
+
             return IdentifierExpression.new(token.as(IdentifierToken))
         elsif token = next_token_matches { |t| t.is_a?(IntegerToken) }
             return IntegerExpression.new(token.as(IntegerToken))
         elsif open_paren = next_token_matches { |t| t.as(SymbolToken).value.open_paren? }
+
+            before_anonymous = freeze()
+
+            begin
+                unfreeze(start)
+                return parse_fat_arrow()
+            rescue e
+                unfreeze(before_anonymous)
+            end
+
             result = parse_expression()
             
             expect("Expected close paren") { |t| t.as(SymbolToken).value.close_paren? }
@@ -113,9 +172,21 @@ class Parser
 
                 break if left_binding < binding_power
 
-                right = parse_expression(right_binding)
+                if operator.value.question_mark?
+                    condition = left
 
-                left = BinaryExpression.new(left, operator, right)
+                    left = parse_expression(0)
+
+                    expect("Expected ':' in ternary expression") { |t| t.as(SymbolToken).value.colon? }
+                    
+                    right = parse_expression(right_binding)
+
+                    left = TernaryExpression.new(condition, left, right)
+                else
+                    right = parse_expression(right_binding)
+
+                    left = BinaryExpression.new(left, operator, right)
+                end
             else
                 break
             end
