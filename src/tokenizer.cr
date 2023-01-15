@@ -243,8 +243,8 @@ class Tokenizer
         start = @index
 
         case peek_next_character()
-        when .letter?
-            while peek_next_character().alphanumeric?
+        when .letter?, .in_set?("_@$")
+            while peek_next_character().alphanumeric? || peek_next_character().in_set?("_@$")
                 advance
             end
 
