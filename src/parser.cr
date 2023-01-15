@@ -117,16 +117,16 @@ class Parser
             expect("Expected close paren") { |t| t.as(SymbolToken).value.close_paren? }
 
             return result
-        elsif token = next_token_matches { |t| t.as(SymbolToken).is_prefix? }
-            operator = token.as(SymbolToken)
-
-            return UnaryPrefixExpression.new(operator, parse_expression(operator.prefix_binding_power))
         elsif token = next_token_matches { |t| t.as(SymbolToken).value.substitution? }
             result = parse_expression()
 
             expect("Expected close '%'") { |t| t.as(SymbolToken).value.substitution? }
 
             return UnaryPrefixExpression.new(token.as(SymbolToken), result)
+        elsif token = next_token_matches { |t| t.as(SymbolToken).is_prefix? }
+            operator = token.as(SymbolToken)
+
+            return UnaryPrefixExpression.new(operator, parse_expression(operator.prefix_binding_power))
         end
 
         raise Exception.new("unimplemented? #{get_next_token().context.lines[0].get_body()}")

@@ -16,29 +16,65 @@ enum Marker
     QuestionMark
     Colon
 
+    OrMaybe
+
+    Or
+    And
+
+    LowNot
+
+    Is
+    In
+    Contains
+
+    Equals
+    EqualsEquals
+    NotEquals
+    NotEqualsEquals
+
+    Less
+    LessEquals
+    Greater
+    GreaterEquals
+
+    BitwiseAnd
+    BitwiseOr
+    BitwiseXor
+
+    LeftShift
+    RightShift
+    RightRotate
+
     Plus
     Minus
+
     Times
     Divide
+    FloorDivide
 
-    Dot
-    Substitution
-    
+    Not
+    BitwiseNot
+    Reference
+
+    Power
+
     PlusPlus
     MinusMinus
+
+    Dot
+    OpenIndex
+    CloseIndex
+
+    Substitution
     
     Comma
     OpenParen
     CloseParen
-    
-    OpenIndex
-    CloseIndex
 
     FatArrow
 end
 
 Symbols = [
-
     {":=", Marker::ColonEquals},
     {"+=", Marker::PlusEquals},
     {"-=", Marker::MinusEquals},
@@ -56,12 +92,53 @@ Symbols = [
     {"?", Marker::QuestionMark},
     {":", Marker::Colon},
 
+    {"??", Marker::OrMaybe},
+
+    {"||", Marker::Or},
+    {"&&", Marker::And},
+
+    # dummies for printing, actually defined as KeywordSymbols
+    {"not", Marker::LowNot},
+    {"is", Marker::Is},
+    {"in", Marker::In},
+    {"contains", Marker::Contains},
+    
+    {"=", Marker::Equals},
+    {"==", Marker::EqualsEquals},
+    {"!=", Marker::NotEquals},
+    {"!==", Marker::NotEqualsEquals},
+
+    {"<", Marker::Less},
+    {"<=", Marker::LessEquals},
+    {">", Marker::Greater},
+    {">=", Marker::GreaterEquals},
+
+    {"&", Marker::BitwiseAnd},
+    {"|", Marker::BitwiseOr},
+    {"^", Marker::BitwiseXor},
+
+    {"<<", Marker::LeftShift},
+    {">>", Marker::RightShift},
+    {">>>", Marker::RightRotate},
+
     {"+", Marker::Plus},
     {"-", Marker::Minus},
+
     {"*", Marker::Times},
     {"/", Marker::Divide},
+    {"//", Marker::FloorDivide},
+
+    {"!", Marker::Not},
+    {"~", Marker::BitwiseNot},
+    {"&", Marker::Reference},
+
+    {"**", Marker::Power},
+
+    {"++", Marker::PlusPlus},
+    {"--", Marker::MinusMinus},
 
     {".", Marker::Dot},
+
     {"%", Marker::Substitution},
 
     {"[", Marker::OpenIndex},
@@ -69,13 +146,19 @@ Symbols = [
 
     {"=>", Marker::FatArrow},
 
-    {"++", Marker::PlusPlus},
-    {"--", Marker::MinusMinus},
-
     {",", Marker::Comma},
     {"(", Marker::OpenParen},
     {")", Marker::CloseParen}
 ]
+
+KeywordSymbols = {
+    "or" => Marker::Or,
+    "and" => Marker::And,
+    "not" => Marker::LowNot,
+    "is" => Marker::Is,
+    "in" => Marker::In,
+    "contains" => Marker::Contains
+}
 
 enum Associativity
     Left
@@ -99,20 +182,82 @@ BinaryOperators = {
 
     Marker::QuestionMark => { 2, Associativity::Right },
 
-    Marker::Plus => { 2, Associativity::Left },
-    Marker::Minus => { 2, Associativity::Left },
-    Marker::Dot => { 11, Associativity::Left }
+    Marker::OrMaybe => { 3, Associativity::Left },
+
+    Marker::Or => { 4, Associativity::Left },
+
+    Marker::And => { 5, Associativity::Left },
+
+    # 6 for LowNot
+
+    Marker::Is => { 7, Associativity::Left },
+    Marker::In => { 7, Associativity::Left },
+    Marker::Contains => { 7, Associativity::Left },
+
+    Marker::Equals => { 8, Associativity::Right },
+    Marker::EqualsEquals => { 8, Associativity::Right },
+    Marker::NotEquals => { 8, Associativity::Right },
+    Marker::NotEqualsEquals => { 8, Associativity::Right },
+
+    Marker::Less => { 9, Associativity::Left },
+    Marker::LessEquals => { 9, Associativity::Left },
+    Marker::Greater => { 9, Associativity::Left },
+    Marker::GreaterEquals => { 9, Associativity::Left },
+
+    # 10 for concatination
+
+    Marker::BitwiseAnd => { 11, Associativity::Left },
+    Marker::BitwiseOr => { 11, Associativity::Left },
+    Marker::BitwiseXor => { 11, Associativity::Left },
+
+    Marker::LeftShift => { 12, Associativity::Left },
+    Marker::RightShift => { 12, Associativity::Left },
+    Marker::RightRotate => { 12, Associativity::Left },
+
+    Marker::Plus => { 13, Associativity::Left },
+    Marker::Minus => { 13, Associativity::Left },
+
+    Marker::Times => { 14, Associativity::Left },
+    Marker::Divide => { 14, Associativity::Left },
+    Marker::FloorDivide => { 14, Associativity::Left },
+
+    # 15 for unary -/=/!/~/&
+
+    Marker::Power => { 16, Associativity::Left },
+
+    # 17 for affix ++/--
+
+    # 18 for magic 'maybe'
+
+    # 19 for calls
+
+    # also for indexing
+    Marker::Dot => { 20, Associativity::Left }
+
+    # 21 for substitution
 }
 
 PrefixOperators = {
-    Marker::Minus => 3,
-    Marker::PlusPlus => 10,
-    Marker::MinusMinus => 10
+    Marker::LowNot => 6,
+
+    Marker::Plus => 15,
+    Marker::Minus => 15,
+    Marker::Not => 15,
+    Marker::BitwiseNot => 15,
+    Marker::Reference => 15,
+
+    Marker::PlusPlus => 17,
+    Marker::MinusMinus => 17,
+
+    # Note: precedence isn't actually used since %% wraps the operand
+    Marker::Substitution => 21
 }
 
 SuffixOperators = {
-    Marker::PlusPlus => 10,
-    Marker::MinusMinus => 10,
-    Marker::OpenParen => 11,
-    Marker::OpenIndex => 12
+    Marker::PlusPlus => 17,
+    Marker::MinusMinus => 17,
+
+    Marker::OpenParen => 19,
+
+    Marker::OpenIndex => 20,
 }

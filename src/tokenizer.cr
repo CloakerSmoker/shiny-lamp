@@ -248,6 +248,8 @@ class Tokenizer
 
             if keyword = Keyword.parse?(text.camelcase())
                 return KeywordToken.new(make_source_context(start), keyword)
+            elsif KeywordSymbols.has_key?(text.downcase())
+                return SymbolToken.new(make_source_context(start), KeywordSymbols[text.downcase()])
             else
                 return IdentifierToken.new(make_source_context(start), text)
             end
