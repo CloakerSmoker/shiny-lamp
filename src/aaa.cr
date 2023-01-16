@@ -25,10 +25,16 @@ module Aaa
 
     p = Parser.new(t)
 
-    p.parse_statement().to_s_indent(STDOUT, 0)
+    statement = p.parse_statement()
+
+    statement.to_s_indent(STDOUT, 0)
+
+    e = Evaluator.new()
+    puts "Result: #{e.evaluate_expression(statement.as(ExpressionStatement).value)}"
   end
 end
 
 require "./constants.cr"
 require "./tokenizer.cr"
 require "./parser.cr"
+require "./evaluator.cr"
