@@ -39,6 +39,20 @@ class Parser
         return false
     end
 
+    def peek_token_matches(&condition : Proc(Token, Bool)) : Token | Bool
+        token = peek_next_token()
+
+        begin
+            if condition.call(token)
+                return token
+            end
+        rescue
+            return false
+        end
+
+        return false
+    end
+
     def expect(error : String, &condition : Proc(Token, Bool)) : Token
         token = next_token_matches(&condition)
 
@@ -129,6 +143,46 @@ class Parser
             operator = token.as(SymbolToken)
 
             return UnaryPrefixExpression.new(operator, parse_expression(operator.prefix_binding_power))
+        elsif token = next_token_matches { |t| t.as(SymbolToken).value.open_index? }
+            values = [] of ExpressionNode
+
+            loop do
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_index? }
+
+                values << parse_expression()
+
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_index? }
+
+                expect("Expected comma between array literal elements") { |t| t.as(SymbolToken).value.comma? }
+            end
+
+            return ArrayLiteralExpression.new(values)
+        elsif token = next_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
+            values = [] of Tuple(ExpressionNode, ExpressionNode)
+
+            loop do
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
+
+                if key_token = next_token_matches { |t| t.is_a?(IdentifierToken) }
+                    key = StringExpression.new(key_token.as(IdentifierToken).make_string_token())
+                elsif peek_token_matches { |t| t.as(SymbolToken).value.substitution? }
+                    key = parse_expression()
+                else
+                    raise Exception.new("hey, uncool #{peek_next_token()}")
+                end
+                
+                expect("Expected ':' between key and value") { |t| t.as(SymbolToken).value.colon? }
+
+                value = parse_expression()
+
+                values << {key, value}
+
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
+
+                expect("Expected comma between object literal elements") { |t| t.as(SymbolToken).value.comma? }
+            end
+
+            return ObjectLiteralExpression.new(values)
         end
 
         raise Exception.new("unimplemented? #{get_next_token().context.lines[0].get_body()}")
@@ -203,5 +257,54 @@ class Parser
     end
     def parse_expression
         return parse_expression(0)
+    end
+
+    def parse_block
+        if next_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
+            statements = [] of StatementNode
+
+            loop do
+                statements << parse_statement()
+                
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
+            end
+
+            return Block.new(statements)
+        else
+            return Block.new([parse_statement()])
+        end
+    end
+
+    def parse_if_statement : IfStatement
+        branches = [] of Tuple(ExpressionNode, Block)
+        else_branch = nil
+
+        loop do
+            condition = parse_expression()
+            body = parse_block()
+
+            branches << {condition, body}
+
+            if next_token_matches { |t| t.as(KeywordToken).value.else? }
+                if next_token_matches { |t| t.as(KeywordToken).value.if? }
+                    next
+                else
+                    else_branch = parse_block()
+                end
+            end
+
+            break
+        end
+
+        return IfStatement.new(branches, else_branch)
+    end
+
+    def parse_statement : StatementNode
+        if next_token_matches { |t| t.as(KeywordToken).value.if? }
+            return parse_if_statement().as(StatementNode)
+        else
+            return ExpressionStatement.new(parse_expression())
+        end
+
     end
 end

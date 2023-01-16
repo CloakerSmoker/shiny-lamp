@@ -1,3 +1,12 @@
+enum Keyword
+    If
+    Else
+
+    Loop
+    Continue
+    Break
+end
+
 enum Marker
     ColonEquals
     PlusEquals
@@ -74,6 +83,9 @@ enum Marker
     Comma
     OpenParen
     CloseParen
+
+    OpenBracket
+    CloseBracket
 
     FatArrow
 end
@@ -157,7 +169,10 @@ Symbols = [
 
     {",", Marker::Comma},
     {"(", Marker::OpenParen},
-    {")", Marker::CloseParen}
+    {")", Marker::CloseParen},
+
+    {"{", Marker::OpenBracket},
+    {"}", Marker::CloseBracket}
 ]
 
 KeywordSymbols = {

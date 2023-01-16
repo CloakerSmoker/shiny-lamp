@@ -25,7 +25,7 @@ module Aaa
 
     p = Parser.new(t)
 
-    puts p.parse_expression()
+    p.parse_statement().to_s_indent(STDOUT, 0)
   end
 end
 

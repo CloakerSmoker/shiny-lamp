@@ -94,6 +94,10 @@ class IdentifierToken < Token
     def to_s(io)
         io << "identifier(" << value << ")"
     end
+
+    def make_string_token
+        return StringToken.new(@context, @value)
+    end
 end
 
 class IntegerToken < Token
@@ -106,15 +110,6 @@ class IntegerToken < Token
     def to_s(io)
         io << "integer(" << value << ")"
     end
-end
-
-enum Keyword
-    If
-    Else
-
-    Loop
-    Continue
-    Break
 end
 
 class KeywordToken < Token

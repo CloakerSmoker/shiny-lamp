@@ -1,3 +1,82 @@
+def indent(io, level)
+    while level != 0
+        io << "\t"
+        level -= 1
+    end
+end
+
+class StatementNode
+    getter context : SourceContext
+
+    def initialize(@context)
+    end
+
+    def to_s_indent(io, indent)
+    end
+end
+
+class ExpressionStatement < StatementNode
+    getter value : ExpressionNode
+
+    def initialize(@value)
+        super(@value.context)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << value << "\n"
+    end
+end
+
+class Block
+    getter statements : Array(StatementNode)
+
+    def initialize(@statements)
+    end
+
+    def to_s_indent(io, level)
+        io << "{\n"
+
+        @statements.each do |statement|
+            statement.to_s_indent(io, level + 1)
+        end
+
+        indent(io, level)
+        io << "}\n"
+    end
+end
+
+class IfStatement < StatementNode
+    getter branches : Array(Tuple(ExpressionNode, Block))
+    getter else_branch : Block | Nil
+
+    def initialize(@branches, @else_branch)
+        super(@branches[0][0].context)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << "if " << @branches[0][0] << " "
+        branches[0][1].to_s_indent(io, level)
+
+        @branches.each_with_index do |(condition, body), index|
+            next if index == 0
+
+            indent(io, level)
+            io << "else if " << condition << " "
+            body.to_s_indent(io, level)
+        end
+
+        if @else_branch != nil
+            indent(io, level)
+            io << "else "
+            @else_branch.as(Block).to_s_indent(io, level)
+        end
+
+    end
+end
+
+
 class ExpressionNode
     getter context : SourceContext
 
@@ -146,5 +225,45 @@ class AnonymousFunctionExpression < ExpressionNode
         io << "("
         @parameters.join(io, ", ")
         io << ") => " << @body
+    end
+end
+
+class ArrayLiteralExpression < ExpressionNode
+    getter values : Array(ExpressionNode)
+
+    def initialize(@values)
+        super(@values[0].context)
+    end
+
+    def to_s(io)
+        io << "["
+
+        @values.each_with_index do |value, index|
+            io << ", " if index != 0
+
+            io << value
+        end
+
+        io << "]"
+    end
+end
+
+class ObjectLiteralExpression < ExpressionNode
+    getter values : Array(Tuple(ExpressionNode, ExpressionNode))
+
+    def initialize(@values)
+        super(@values[0][0].context)
+    end
+
+    def to_s(io)
+        io << "{"
+
+        @values.each_with_index do |(key, value), index|
+            io << ", " if index != 0
+
+            io << key << ": " << value
+        end
+
+        io << "}"
     end
 end
