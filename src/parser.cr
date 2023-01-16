@@ -163,8 +163,20 @@ class Parser
             loop do
                 break if next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
 
+                # for some unspeakable reason, v2 object literals don't take expressions as keys
+                # instead, we're stuck with unquoted tokens being magically converted into strings
+                # and expressions (for dynamic keys) need to be wrapped in the substitution operator.
+
+                # this sucks. really really sucks.
+                # `{0x12: 1}` makes an object where `o.0x12 == 1` but `o.18` isn't present.
+                # oh, yeah, the `.` operator does this too. Kill me now.
+
                 if key_token = next_token_matches { |t| t.is_a?(IdentifierToken) }
                     key = StringExpression.new(key_token.as(IdentifierToken).make_string_token())
+                elsif key_token = next_token_matches { |t| t.is_a?(IntegerToken) }
+                    key_integer_token = key_token.as(IntegerToken)
+
+                    key = StringExpression.new(StringToken.new(key_integer_token.context, "#{key_integer_token.value}"))
                 elsif peek_token_matches { |t| t.as(SymbolToken).value.substitution? }
                     key = parse_expression()
                 else
