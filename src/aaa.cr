@@ -5,8 +5,6 @@ module Aaa
   # TODO: Put your code here
 
   STDIN.each_line do |line|
-    puts "Input: '#{line}'"
-
     t = TokenMemoizer.new(Tokenizer.new("main.ahk2", line))
     
     loop do
@@ -27,7 +25,9 @@ module Aaa
 
     root_block = p.parse_block()
 
+    puts "Root block:"
     root_block.to_s_indent(STDOUT, 0)
+    puts "\n"
 
     e = Evaluator.new()
 

@@ -128,11 +128,21 @@ class Parser
                 unfreeze(before_anonymous)
             end
 
-            result = parse_expression()
-            
+            expressions = [] of ExpressionNode
+
+            loop do
+                expressions << parse_expression()
+
+                break if !next_token_matches { |t| t.as(SymbolToken).value.comma? }
+            end
+
             expect("Expected close paren") { |t| t.as(SymbolToken).value.close_paren? }
 
-            return result
+            if expressions.size == 1
+                return expressions[0]
+            else
+                return GroupExpression.new(expressions)
+            end
         elsif token = next_token_matches { |t| t.as(SymbolToken).value.substitution? }
             result = parse_expression()
 
@@ -315,7 +325,19 @@ class Parser
         if next_token_matches { |t| t.as(KeywordToken).value.if? }
             return parse_if_statement().as(StatementNode)
         else
-            return ExpressionStatement.new(parse_expression())
+            expressions = [] of ExpressionNode
+
+            loop do
+                expressions << parse_expression()
+
+                break if !next_token_matches { |t| t.as(SymbolToken).value.comma? }
+            end
+
+            if expressions.size == 1
+                return ExpressionStatement.new(expressions[0])
+            else
+                return ExpressionStatement.new(GroupExpression.new(expressions))
+            end
         end
     end
 

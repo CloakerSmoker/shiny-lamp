@@ -33,6 +33,35 @@ class IntegerValue < EvaluatorValue
     end
 end
 
+class UnsetValue < EvaluatorValue
+    def truthy?
+        return false
+    end
+
+    def to_s(io)
+        io << "unset"
+    end
+end
+
+abstract class Callable < EvaluatorValue
+    abstract def call(parameters : Array(EvaluatorValue)) : EvaluatorValue
+end
+
+class NativeFunction < Callable
+    getter callback : Array(EvaluatorValue) -> EvaluatorValue
+
+    def initialize(@callback : Array(EvaluatorValue) -> EvaluatorValue)
+    end
+
+    def truthy?
+        return true
+    end
+
+    def call(parameters : Array(EvaluatorValue)) : EvaluatorValue
+        return callback.call(parameters)
+    end
+end
+
 class ObjectValue < EvaluatorValue
     getter values : Hash(EvaluatorValue, EvaluatorValue)
 
@@ -74,10 +103,20 @@ class Evaluator
     getter global_environment : Environment
     getter current_environment : Environment
 
+    def puts_fn(parameters : Array(EvaluatorValue)) : EvaluatorValue
+        parameters.each do |parameter|
+            puts "#{parameter}"
+        end
+
+        return UnsetValue.new().as(EvaluatorValue)
+    end
+
     def initialize
         @global_environment = Environment.new()
 
         @current_environment = @global_environment
+
+        @current_environment.set("puts", NativeFunction.new(->puts_fn(Array(EvaluatorValue))))
     end
 
     def evaluate_identifer(expression : IdentifierExpression) : EvaluatorValue
@@ -189,6 +228,30 @@ class Evaluator
         raise Exception.new("Unimplemented binary operator: #{expression.operator}")
     end
 
+    def evaluate_group(expression : GroupExpression) : EvaluatorValue
+        expression.expressions.each_with_index do |child, index|
+            value = evaluate_expression(child)
+
+            return value if index == expression.expressions.size - 1
+        end
+
+        # unreachable, but makes the compiler happy
+
+        return IntegerValue.new(0)
+    end
+
+    def evaluate_call(expression : CallExpression) : EvaluatorValue
+        target = evaluate_expression_typed(expression.target, Callable)
+
+        parameters = [] of EvaluatorValue
+
+        expression.parameters.each do |parameter|
+            parameters << evaluate_expression(parameter)
+        end
+
+        return target.call(parameters)
+    end
+
     def evaluate_expression(expression : ExpressionNode) : EvaluatorValue
         case expression
         when .is_a?(IdentifierExpression)
@@ -203,6 +266,10 @@ class Evaluator
             return evaluate_suffix(expression.as(UnarySuffixExpression))
         when .is_a?(BinaryExpression)
             return evaluate_binary(expression.as(BinaryExpression))
+        when .is_a?(GroupExpression)
+            return evaluate_group(expression.as(GroupExpression))
+        when .is_a?(CallExpression)
+            return evaluate_call(expression.as(CallExpression))
         end
 
         raise Exception.new("Unimplemented expression type: #{expression}")
@@ -211,7 +278,9 @@ class Evaluator
     def evaluate_statement(statement : StatementNode)
         case statement
         when .is_a?(ExpressionStatement)
-            evaluate_expression(statement.as(ExpressionStatement).value)
+            value = evaluate_expression(statement.as(ExpressionStatement).value)
+
+            #puts "#{statement.as(ExpressionStatement).value}: #{value}"
         end
     end
 

@@ -267,3 +267,23 @@ class ObjectLiteralExpression < ExpressionNode
         io << "}"
     end
 end
+
+class GroupExpression < ExpressionNode
+    getter expressions : Array(ExpressionNode)
+
+    def initialize(@expressions)
+        super(@expressions[0].context)
+    end
+
+    def to_s(io)
+        io << "("
+
+        @expressions.each_with_index do |expression, index|
+            io << ", " if index != 0
+
+            io << expression
+        end
+
+        io << ")"
+    end
+end
