@@ -43,13 +43,29 @@ class ObjectValue < EvaluatorValue
     def truthy?
         return true
     end
+
+    def has_key?(name : EvaluatorValue)
+        return @values.has_key?(name)
+    end
+
+    def []?(name : EvaluatorValue)
+        return @values[name]?
+    end
+
+    def []=(name : EvaluatorValue, value : EvaluatorValue)
+        @values[name] = value
+    end
 end
 
 class Environment
-    getter variables : ObjectValue = ObjectValue.new()
+    getter variables = {} of String => EvaluatorValue
 
-    def lookup(name : String)
-        return IntegerValue.new(0)
+    def lookup(name : String) : EvaluatorValue | Nil
+        return @variables[name]?
+    end
+
+    def set(name : String, value : EvaluatorValue)
+        @variables[name] = value
     end
 end
 
@@ -65,7 +81,11 @@ class Evaluator
     end
 
     def evaluate_identifer(expression : IdentifierExpression) : EvaluatorValue
-        return @current_environment.lookup(expression.value)
+        if value = @current_environment.lookup(expression.value)
+            return value.as(EvaluatorValue)
+        end
+
+        raise Exception.new("Unset variable: #{expression}")
     end
 
     def evaluate_string(expression : StringExpression) : EvaluatorValue
@@ -101,18 +121,70 @@ class Evaluator
         raise Exception.new("Unimplemented suffix operator: #{expression.operator}")
     end
 
+    def ensure_value_is_string(value : EvaluatorValue) : StringValue
+        if !value.is_a?(StringValue)
+            return StringValue.new("#{value}")
+        end
+
+        return value.as(StringValue)
+    end
+
+    macro evaluate_expression_typed(expression, value_type)
+        if (%result = evaluate_expression({{expression}})).is_a?({{value_type}})
+            %result.as({{value_type}})
+        else
+            raise Exception.new("Bad result type for expression: #{expression}, expected #{{{value_type}}}, got #{typeof(%result)}")
+        end
+    end
+
+    macro binary_integer_op(result)
+        left = evaluate_expression_typed(expression.left, IntegerValue).value
+        right = evaluate_expression_typed(expression.right, IntegerValue).value
+
+        return IntegerValue.new(({{result}}).to_i())
+    end
+
+    macro binary_string_op(result)
+        left = ensure_value_is_string(evaluate_expression(expression.left)).value
+        right = ensure_value_is_string(evaluate_expression(expression.right)).value
+
+        return StringValue.new({{result}})
+    end
+
+    def evaluate_assignment(target : ExpressionNode, value : EvaluatorValue) : EvaluatorValue
+
+        case target
+        when .is_a?(BinaryExpression)
+            # todo
+        when .is_a?(IdentifierExpression)
+            target_name = target.as(IdentifierExpression).value
+
+            current_environment.set(target_name, value)
+        end
+
+        return value
+    end
+
     def evaluate_binary(expression : BinaryExpression) : EvaluatorValue
         case expression.operator.value
         when .plus?
-            left = evaluate_expression_typed(expression.left, IntegerValue)
-            right = evaluate_expression_typed(expression.right, IntegerValue)
-
-            return IntegerValue.new(left + right)
+            binary_integer_op(left + right)
         when .minus?
-            left = evaluate_expression_typed(expression.left, IntegerValue)
-            right = evaluate_expression_typed(expression.right, IntegerValue)
+            binary_integer_op(left - right)
+        when .times?
+            binary_integer_op(left * right)
+        when .divide?
+            binary_integer_op(left / right)
+        when .floor_divide?
+            binary_integer_op(left // right)
+        when .power?
+            binary_integer_op(left ** right)
+        when .concatinate?
+            binary_string_op("#{left}#{right}")
+        when .colon_equals?
+            return evaluate_assignment(expression.left, evaluate_expression(expression.right))
 
-            return IntegerValue.new(left - right)
+        end
 
         raise Exception.new("Unimplemented binary operator: #{expression.operator}")
     end
@@ -136,20 +208,17 @@ class Evaluator
         raise Exception.new("Unimplemented expression type: #{expression}")
     end
 
-    def evaluate_expression_typed(expression : ExpressionNode, value_type : T.class) forall T
-        result = evaluate_expression(expression)
-
-        begin
-            return result
-        rescue
-            raise Exception.new("Bad result type for expression: #{expression}, expected #{value_type}, got #{typeof(value_type)}")
+    def evaluate_statement(statement : StatementNode)
+        case statement
+        when .is_a?(ExpressionStatement)
+            evaluate_expression(statement.as(ExpressionStatement).value)
         end
     end
 
-    #def evaluate_statement(statement : StatementNode)
-        #case statement
-        #when .is_a?(ExpressionStatement)
-            
-    #end
+    def evaluate_block(block : Block)
+        block.statements.each do |statement|
+            evaluate_statement(statement)
+        end
+    end
 
 end

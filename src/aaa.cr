@@ -25,12 +25,13 @@ module Aaa
 
     p = Parser.new(t)
 
-    statement = p.parse_statement()
+    root_block = p.parse_block()
 
-    statement.to_s_indent(STDOUT, 0)
+    root_block.to_s_indent(STDOUT, 0)
 
     e = Evaluator.new()
-    puts "Result: #{e.evaluate_expression(statement.as(ExpressionStatement).value)}"
+
+    e.evaluate_block(root_block)
   end
 end
 

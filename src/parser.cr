@@ -317,6 +317,17 @@ class Parser
         else
             return ExpressionStatement.new(parse_expression())
         end
+    end
 
+    def parse_program : Block
+        statements = [] of StatementNode
+
+        loop do
+            break if next_token_matches { |t| t.is_a?(EndToken) }
+
+            statements << parse_statement()
+        end
+
+        return statements
     end
 end
