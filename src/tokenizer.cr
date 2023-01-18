@@ -129,15 +129,49 @@ end
 class Tokenizer
     property file : String
     property source : String
-    property index : Int32
 
-    property line_number : Int32
-    property line_offsets : Array(Int32)
+    property lines = [] of Line
+
+    property index : Int32
 
     def initialize(@file, @source)
         @index = 0
-        @line_number = 1
-        @line_offsets = [0, 0]
+
+        crlf = @source.index("\r\n") != nil
+        lf = @source.index("\n")
+        cr = @source.index("\r")
+
+        line_ending = crlf ? "\r\n" : (lf ? "\n" : "\r")
+        
+        # dummy line 0
+        @lines << Line.new("N/A", "N/A", 0, 0, 0)
+        @lines << Line.new(@file, @source, 1, 0, 0)
+
+        loop do
+            last_line = @lines[lines.size() - 1]
+
+            line_end = @source.index(line_ending, last_line.start_offset)
+
+            #puts "line starting at #{last_line.start_offset} ends at #{line_end}"
+
+            if line_end
+                last_line.set_end(line_end)
+
+                next_line_start = line_end + line_ending.size()
+
+                @lines << Line.new(@file, @source, lines.size(), next_line_start, 0)
+            else
+                last_line.set_end(@source.size())
+                break
+            end
+        end
+
+        @lines.each_with_index do |line, index|
+            next if index == 0
+            puts "line #{index}: #{@source[line.start_offset, line.end_offset - line.start_offset]}"
+        end
+
+        # partial line 1 (line end offset will be corrected)
     end
 
     def at_end? : Bool
@@ -162,12 +196,16 @@ class Tokenizer
         return result
     end
 
-    def make_line_context(start : Int32) : LineContext
-        return LineContext.new(@file, @source, @line_offsets[@line_number], @line_number, start, @index - start)
-    end
+    def make_source_context(body_start : Int32, body_end : Int32 = @index) : SourceContext
+        lines = [] of LineContext
 
-    def make_source_context(start : Int32) : SourceContext
-        return SourceContext.new([make_line_context(start)])
+        @lines.each do |line|
+            if line.is_contained_in(body_start, body_end)
+                lines << line.make_context_inside(body_start, body_end)
+            end
+        end
+
+        return SourceContext.new(lines)
     end
 
     def get_next_token() : Token
@@ -206,16 +244,29 @@ class Tokenizer
             advance
             
             return StringToken.new(make_source_context(start), string)
-        when '\r'
-            @line_number += 1
-            @line_offsets << @index
+        when '\r', '\n'
+            #@lines.last(1)[0].set_end(@index)
 
-            return LineEndingToken.new(make_source_context(start))
-        when .whitespace?
-            while peek_next_character().whitespace?
-                advance
+            #if peek_next_character() == '\r'
+                #puts "got \\r"
+            #else
+                #puts "got \\n"
+            #end
+
+            if get_next_character() == '\r'
+                if peek_next_character() == '\n'
+                    #puts "\\r\\n"
+                    advance
+                end
             end
+            
+            #@line_number += 1
+           # @line_start = @index
 
+            return get_next_token()
+            #return LineEndingToken.new(make_source_context(start))
+        when .whitespace?
+            advance
             # tokenizer hack for dot concatination operator
 
             if peek_next_character() == '.'
