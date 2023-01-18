@@ -62,28 +62,33 @@ class NativeFunction < Callable
     end
 end
 
-class ObjectValue < EvaluatorValue
-    getter values : Hash(EvaluatorValue, EvaluatorValue)
+#class PropertyValue < EvaluatorValue
 
-    def initialize
-        @values = {} of EvaluatorValue => EvaluatorValue
-    end
+class ObjectValue < EvaluatorValue
+    getter properties = {} of EvaluatorValue => EvaluatorValue
 
     def truthy?
         return true
     end
 
     def has_key?(name : EvaluatorValue)
-        return @values.has_key?(name)
+        return @properties.has_key?(name)
     end
 
-    def []?(name : EvaluatorValue)
-        return @values[name]?
+    def define_property()
     end
 
-    def []=(name : EvaluatorValue, value : EvaluatorValue)
-        @values[name] = value
+    #abstract def set_item(key : EvaluatorValue, value : EvaluatorValue)
+    #abstract def get_item(key : EvaluatorValue) : EvaluatorValue
+end
+
+class ArrayValue < ObjectValue
+    getter elements = [] of EvaluatorValue
+
+    def initialize
     end
+
+    
 end
 
 class Environment
@@ -250,6 +255,14 @@ class Evaluator
         end
 
         return target.call(parameters)
+    end
+
+    def evaluate_array_literal(expression : ArrayLiteralExpression)
+
+    end
+
+    def evaluate_object_literal(expression : ObjectLiteralExpression)
+
     end
 
     def evaluate_expression(expression : ExpressionNode) : EvaluatorValue

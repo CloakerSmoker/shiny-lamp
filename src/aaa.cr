@@ -12,6 +12,8 @@ module Aaa
         tk = t.get_next_token()
         puts tk
 
+        notify_at_context(tk.context, "aaa")
+
         break if tk.is_a?(EndToken)
       rescue unexpected : UnexpectedCharacterException
         puts "Unexpected character '#{unexpected.context.lines[0].get_body()}'"
@@ -36,6 +38,7 @@ module Aaa
 end
 
 require "./constants.cr"
+require "./error.cr"
 require "./tokenizer.cr"
 require "./parser.cr"
 require "./evaluator.cr"
