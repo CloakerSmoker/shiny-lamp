@@ -27,7 +27,7 @@ module Aaa
 
     p = Parser.new(t)
 
-    root_block = p.parse_block()
+    root_block = p.parse_program()
 
     puts "Root block:"
     root_block.to_s_indent(STDOUT, 0)

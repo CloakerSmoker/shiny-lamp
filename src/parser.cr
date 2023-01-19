@@ -362,6 +362,6 @@ class Parser
             statements << parse_statement()
         end
 
-        return statements
+        return Block.new(statements)
     end
 end

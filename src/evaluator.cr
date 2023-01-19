@@ -44,21 +44,59 @@ class UnsetValue < EvaluatorValue
 end
 
 abstract class Callable < EvaluatorValue
-    abstract def call(parameters : Array(EvaluatorValue)) : EvaluatorValue
+    abstract def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
 end
 
 class NativeFunction < Callable
-    getter callback : Array(EvaluatorValue) -> EvaluatorValue
+    getter callback : (Evaluator, SourceElement, Array(ExpressionNode)) -> EvaluatorValue
 
-    def initialize(@callback : Array(EvaluatorValue) -> EvaluatorValue)
+    def initialize(@callback : (Evaluator, SourceElement, Array(ExpressionNode)) -> EvaluatorValue)
     end
 
     def truthy?
         return true
     end
 
-    def call(parameters : Array(EvaluatorValue)) : EvaluatorValue
-        return callback.call(parameters)
+    def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
+        return callback.call(evaluator, blame, parameters)
+    end
+end
+
+class UserFunction < Callable
+    getter anonymous : AnonymousFunctionExpression
+
+    def initialize(@anonymous)
+    end
+
+    def truthy?
+        return true
+    end
+
+    def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
+        if parameters.size != @anonymous.parameters.size
+            blame.error("Wrong number of parameters passed to function, expected #{@anonymous.parameters.size}, got #{parameters.size}")
+        end
+
+        environment = evaluator.push_environment()
+
+        parameters.each_with_index do |parameter, index|
+            formal_parameter = @anonymous.parameters[index]
+            formal_parameter_name = formal_parameter.value
+            
+            parameter_value = evaluator.evaluate_expression(parameter)
+
+            environment.set_local(formal_parameter_name, parameter_value)
+        end
+
+        result = evaluator.evaluate_expression(@anonymous.body)
+
+        evaluator.pop_environment()
+
+        return result
+    end
+
+    def to_s(io)
+        io << "anonymous_function(#{@anonymous})"
     end
 end
 
@@ -92,25 +130,77 @@ class ArrayValue < ObjectValue
 end
 
 class Environment
+    getter parent : Environment | Nil = nil
     getter variables = {} of String => EvaluatorValue
 
-    def lookup(name : String) : EvaluatorValue | Nil
-        return @variables[name]?
+    def initialize
+    end
+    
+    def initialize(@parent)
+    end
+
+    def lookup(name : String) : Tuple(Environment, EvaluatorValue) | Nil
+        if value = @variables[name]?
+            return {self, value}
+        else
+            if @parent
+                return @parent.as(Environment).lookup(name)
+            else
+                return nil
+            end
+        end
+    end
+
+    def get(name : String) : EvaluatorValue | Nil
+        if results = lookup(name)
+            return results[1]
+        else
+            return nil
+        end
+    end
+
+    def set_local(name : String, value : EvaluatorValue)
+        @variables[name] = value
     end
 
     def set(name : String, value : EvaluatorValue)
-        @variables[name] = value
+        container = self
+
+        if existing = lookup(name)
+            container = existing[0]
+        end
+
+        container.set_local(name, value)
+    end
+
+    def enter
+        return Environment.new(self)
+    end
+
+    def leave
+        return @parent.as(Environment)
     end
 end
 
 class Evaluator
-
     getter global_environment : Environment
+    
     getter current_environment : Environment
 
-    def puts_fn(parameters : Array(EvaluatorValue)) : EvaluatorValue
+    def push_environment
+        @current_environment = @current_environment.enter()
+
+        return @current_environment
+    end
+    def pop_environment
+        @current_environment = @current_environment.leave()
+
+        return @current_environment
+    end
+
+    def puts_fn(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
         parameters.each do |parameter|
-            puts "#{parameter}"
+            puts "#{parameter}: #{evaluate_expression(parameter)}"
         end
 
         return UnsetValue.new().as(EvaluatorValue)
@@ -121,15 +211,15 @@ class Evaluator
 
         @current_environment = @global_environment
 
-        @current_environment.set("puts", NativeFunction.new(->puts_fn(Array(EvaluatorValue))))
+        @current_environment.set("puts", NativeFunction.new(->puts_fn(Evaluator, SourceElement, Array(ExpressionNode))))
     end
 
     def evaluate_identifer(expression : IdentifierExpression) : EvaluatorValue
-        if value = @current_environment.lookup(expression.value)
-            return value.as(EvaluatorValue)
+        if value = @current_environment.get(expression.value)
+            return value
         end
 
-        raise Exception.new("Unset variable: #{expression}")
+        expression.error("Unset variable")
     end
 
     def evaluate_string(expression : StringExpression) : EvaluatorValue
@@ -177,7 +267,7 @@ class Evaluator
         if (%result = evaluate_expression({{expression}})).is_a?({{value_type}})
             %result.as({{value_type}})
         else
-            raise Exception.new("Bad result type for expression: #{expression}, expected #{{{value_type}}}, got #{typeof(%result)}")
+            raise SourceException.new({{expression}}.context, "Bad result type for expression, expected #{{{value_type}}}, got #{typeof(%result)}")
         end
     end
 
@@ -248,13 +338,9 @@ class Evaluator
     def evaluate_call(expression : CallExpression) : EvaluatorValue
         target = evaluate_expression_typed(expression.target, Callable)
 
-        parameters = [] of EvaluatorValue
+        puts "Call to #{target}"
 
-        expression.parameters.each do |parameter|
-            parameters << evaluate_expression(parameter)
-        end
-
-        return target.call(parameters)
+        return target.call(self, expression, expression.parameters)
     end
 
     def evaluate_array_literal(expression : ArrayLiteralExpression)
@@ -263,6 +349,16 @@ class Evaluator
 
     def evaluate_object_literal(expression : ObjectLiteralExpression)
 
+    end
+
+    def evaluate_anonymous_function(expression : AnonymousFunctionExpression)
+        function = UserFunction.new(expression)
+
+        if expression.name != nil
+            @current_environment.set_local(expression.name.as(IdentifierToken).value, function)
+        end
+
+        return function
     end
 
     def evaluate_expression(expression : ExpressionNode) : EvaluatorValue
@@ -285,6 +381,8 @@ class Evaluator
             return evaluate_group(expression.as(GroupExpression))
         when .is_a?(CallExpression)
             return evaluate_call(expression.as(CallExpression))
+        when .is_a?(AnonymousFunctionExpression)
+            return evaluate_anonymous_function(expression.as(AnonymousFunctionExpression))
         end
 
         raise Exception.new("Unimplemented expression type: #{expression}")
