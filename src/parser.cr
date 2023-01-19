@@ -9,6 +9,13 @@ class Parser
         return @tokenizer.peek_next_token()
     end
 
+    def get_current_token : Token
+        return @tokenizer.peek_current_token()
+    end
+    def get_current_token_context : SourceContext
+        return get_current_token().context
+    end
+
     def get_next_token : Token
         return @tokenizer.get_next_token()
     end
@@ -56,12 +63,14 @@ class Parser
     def expect(error : String, &condition : Proc(Token, Bool)) : Token
         token = next_token_matches(&condition)
 
-        raise Exception.new("#{error}, got #{peek_next_token}") if !token
+        peek_next_token().error("#{error}, got #{peek_next_token()}") if !token
 
         return token.as(Token)
     end
 
     def parse_fat_arrow : ExpressionNode
+        first_token_context = peek_next_token().context
+
         name = nil
         maybe_name = nil
         parameters = [] of IdentifierExpression
@@ -96,7 +105,7 @@ class Parser
 
         body = parse_expression()
 
-        return AnonymousFunctionExpression.new(name, parameters, body)
+        return AnonymousFunctionExpression.new(name, parameters, body).merge(first_token_context, get_current_token_context())
     end
 
     def parse_operand : ExpressionNode
@@ -117,8 +126,8 @@ class Parser
             return IntegerExpression.new(token.as(IntegerToken))
         elsif token = next_token_matches { |t| t.is_a?(StringToken) }
             return StringExpression.new(token.as(StringToken))
-        elsif open_paren = next_token_matches { |t| t.as(SymbolToken).value.open_paren? }
-
+        elsif next_token_matches { |t| t.as(SymbolToken).value.open_paren? }
+            first_token_context = get_current_token_context()
             before_anonymous = freeze()
 
             begin
@@ -139,21 +148,23 @@ class Parser
             expect("Expected close paren") { |t| t.as(SymbolToken).value.close_paren? }
 
             if expressions.size == 1
-                return expressions[0]
+                return expressions[0].merge(first_token_context, get_current_token_context())
             else
-                return GroupExpression.new(expressions)
+                return GroupExpression.new(expressions).merge(first_token_context, get_current_token_context())
             end
-        elsif token = next_token_matches { |t| t.as(SymbolToken).value.substitution? }
+        elsif open_substitution = next_token_matches { |t| t.as(SymbolToken).value.substitution? }
+            first_token_context = get_current_token_context()
             result = parse_expression()
 
             expect("Expected close '%'") { |t| t.as(SymbolToken).value.substitution? }
 
-            return UnaryPrefixExpression.new(token.as(SymbolToken), result)
+            return UnaryPrefixExpression.new(open_substitution.as(SymbolToken), result).merge(first_token_context, get_current_token_context())
         elsif token = next_token_matches { |t| t.as(SymbolToken).is_prefix? }
             operator = token.as(SymbolToken)
 
             return UnaryPrefixExpression.new(operator, parse_expression(operator.prefix_binding_power))
-        elsif token = next_token_matches { |t| t.as(SymbolToken).value.open_index? }
+        elsif next_token_matches { |t| t.as(SymbolToken).value.open_index? }
+            first_token_context = get_current_token_context()
             values = [] of ExpressionNode
 
             loop do
@@ -166,8 +177,9 @@ class Parser
                 expect("Expected comma between array literal elements") { |t| t.as(SymbolToken).value.comma? }
             end
 
-            return ArrayLiteralExpression.new(values)
-        elsif token = next_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
+            return ArrayLiteralExpression.new(values).merge(first_token_context, get_current_token_context())
+        elsif next_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
+            first_token_context = get_current_token_context()
             values = [] of Tuple(ExpressionNode, ExpressionNode)
 
             loop do
@@ -190,7 +202,7 @@ class Parser
                 elsif peek_token_matches { |t| t.as(SymbolToken).value.substitution? }
                     key = parse_expression()
                 else
-                    raise Exception.new("hey, uncool #{peek_next_token()}")
+                    peek_next_token().error("Unexpected object literal key token type")
                 end
                 
                 expect("Expected ':' between key and value") { |t| t.as(SymbolToken).value.colon? }
@@ -204,10 +216,10 @@ class Parser
                 expect("Expected comma between object literal elements") { |t| t.as(SymbolToken).value.comma? }
             end
 
-            return ObjectLiteralExpression.new(values)
+            return ObjectLiteralExpression.new(values).merge(first_token_context, get_current_token_context())
         end
 
-        raise Exception.new("unimplemented? #{get_next_token().context.lines[0].get_body()}")
+        peek_next_token().error("Unexpected token")
     end
 
     def parse_expression(binding_power : Int32) : ExpressionNode
@@ -227,7 +239,7 @@ class Parser
 
                     expect("Expected closing ']'") { |t| t.as(SymbolToken).value.close_index? }
                     
-                    left = BinaryExpression.new(left, operator, right)
+                    left = BinaryExpression.new(left, operator, right).merge(get_current_token_context())
                 elsif operator.value.open_paren?
                     parameters = [] of ExpressionNode
 
@@ -241,7 +253,7 @@ class Parser
                         expect("Expected ',' or ')' in parameter list") { |t| t.as(SymbolToken).value.comma? }
                     end
                     
-                    left = CallExpression.new(left, parameters)
+                    left = CallExpression.new(left, parameters).merge(get_current_token_context())
                 else
                     left = UnarySuffixExpression.new(left, operator)
                 end

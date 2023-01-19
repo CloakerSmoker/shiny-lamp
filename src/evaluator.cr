@@ -266,6 +266,8 @@ class Evaluator
     end
 
     def evaluate_expression(expression : ExpressionNode) : EvaluatorValue
+        expression.notify("hi!")
+
         case expression
         when .is_a?(IdentifierExpression)
             return evaluate_identifer(expression.as(IdentifierExpression))

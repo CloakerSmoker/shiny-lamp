@@ -6,9 +6,7 @@ def indent(io, level)
 end
 
 class StatementNode
-    getter context : SourceContext
-
-    def initialize(@context)
+    def initialize()
     end
 
     def to_s_indent(io, indent)
@@ -19,7 +17,6 @@ class ExpressionStatement < StatementNode
     getter value : ExpressionNode
 
     def initialize(@value)
-        super(@value.context)
     end
 
     def to_s_indent(io, level)
@@ -51,7 +48,6 @@ class IfStatement < StatementNode
     getter else_branch : Block | Nil
 
     def initialize(@branches, @else_branch)
-        super(@branches[0][0].context)
     end
 
     def to_s_indent(io, level)
@@ -77,10 +73,13 @@ class IfStatement < StatementNode
 end
 
 
-class ExpressionNode
-    getter context : SourceContext
+class ExpressionNode < SourceElement
+    def initialize
+        super(SourceContext.new())
+    end
 
-    def initialize(@context)
+    def initialize(context)
+        super(context)
     end
 end
 
@@ -156,7 +155,7 @@ class IdentifierExpression < ExpressionNode
 
     def initialize(@token)
         @value = @token.value
-        super(@token.context)
+        super(@token.context.dup())
     end
 
     def to_s(io)
@@ -170,7 +169,7 @@ class StringExpression < ExpressionNode
 
     def initialize(@token)
         @value = @token.value
-        super(@token.context)
+        super(@token.context.dup())
     end
 
     def to_s(io)
@@ -183,7 +182,7 @@ class CallExpression < ExpressionNode
     getter parameters : Array(ExpressionNode)
 
     def initialize(@target, @parameters)
-        super(target.context)
+        super(target.context.dup())
     end
 
     def to_s(io)
@@ -232,7 +231,7 @@ class ArrayLiteralExpression < ExpressionNode
     getter values : Array(ExpressionNode)
 
     def initialize(@values)
-        super(@values[0].context)
+        super()
     end
 
     def to_s(io)
@@ -252,7 +251,7 @@ class ObjectLiteralExpression < ExpressionNode
     getter values : Array(Tuple(ExpressionNode, ExpressionNode))
 
     def initialize(@values)
-        super(@values[0][0].context)
+        super()
     end
 
     def to_s(io)
@@ -272,7 +271,7 @@ class GroupExpression < ExpressionNode
     getter expressions : Array(ExpressionNode)
 
     def initialize(@expressions)
-        super(@expressions[0].context)
+        super()
     end
 
     def to_s(io)

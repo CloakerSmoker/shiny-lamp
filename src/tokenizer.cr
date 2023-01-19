@@ -1,10 +1,9 @@
 
 
 
-class Token
-    property context : SourceContext
-
-    def initialize(@context)
+class Token < SourceElement
+    def initialize(context)
+        super(context)
     end
 end
 
@@ -113,16 +112,9 @@ end
 class DoneException < Exception
 end
 
-class SourceException < Exception
-    getter context : SourceContext
-
-    def initialize(@context)
-    end
-end
-
 class UnexpectedCharacterException < SourceException
     def initialize(context : SourceContext)
-        super(context)
+        super(context, "Unexpected character")
     end
 end
 
@@ -197,9 +189,13 @@ class Tokenizer
     end
 
     def make_source_context(body_start : Int32, body_end : Int32 = @index) : SourceContext
+        #puts "making context for #{body_start}-#{body_end}"
+
         lines = [] of LineContext
 
-        @lines.each do |line|
+        @lines.each_with_index do |line, index|
+            next if index == 0
+
             if line.is_contained_in(body_start, body_end)
                 lines << line.make_context_inside(body_start, body_end)
             end
@@ -372,6 +368,12 @@ class TokenMemoizer
         end
 
         return @tokens[@index]
+    end
+
+    def peek_current_token
+        @index -= 1
+
+        return get_next_token()
     end
 
     def freeze : Int32
