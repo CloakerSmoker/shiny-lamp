@@ -44,76 +44,241 @@ class UnsetValue < EvaluatorValue
 end
 
 abstract class Callable < EvaluatorValue
-    abstract def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
+    abstract def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
 end
 
 class NativeFunction < Callable
-    getter callback : (Evaluator, SourceElement, Array(ExpressionNode)) -> EvaluatorValue
+    getter callback : (Evaluator, SourceElement, Array(EvaluatorValue)) -> EvaluatorValue
 
-    def initialize(@callback : (Evaluator, SourceElement, Array(ExpressionNode)) -> EvaluatorValue)
+    def initialize(@callback : (Evaluator, SourceElement, Array(EvaluatorValue)) -> EvaluatorValue)
     end
 
     def truthy?
         return true
     end
 
-    def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
+    def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
         return callback.call(evaluator, blame, parameters)
     end
 end
 
-class UserFunction < Callable
-    getter anonymous : AnonymousFunctionExpression
+class ReturnException < Exception
+    getter value : EvaluatorValue | Nil
 
-    def initialize(@anonymous)
+    def initialize(@value)
+    end
+end
+
+class UserFunction < Callable
+    getter function : AnonymousFunctionExpression | FunctionDefinintion
+
+    def initialize(@function)
     end
 
     def truthy?
         return true
     end
 
-    def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
-        if parameters.size != @anonymous.parameters.size
-            blame.error("Wrong number of parameters passed to function, expected #{@anonymous.parameters.size}, got #{parameters.size}")
+    def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
+        if parameters.size != @function.parameters.size
+            blame.error("Wrong number of parameters passed to function, expected #{@function.parameters.size}, got #{parameters.size}")
         end
 
         environment = evaluator.push_environment()
 
         parameters.each_with_index do |parameter, index|
-            formal_parameter = @anonymous.parameters[index]
+            formal_parameter = @function.parameters[index]
             formal_parameter_name = formal_parameter.value
-            
-            parameter_value = evaluator.evaluate_expression(parameter)
 
-            environment.set_local(formal_parameter_name, parameter_value)
+            environment.set_local(formal_parameter_name, parameter)
         end
 
-        result = evaluator.evaluate_expression(@anonymous.body)
+        result = nil
+
+        if @function.is_a?(AnonymousFunctionExpression)
+            result = evaluator.evaluate_expression(@function.body.as(ExpressionNode))
+        elsif @function.is_a?(FunctionDefinintion)
+            begin
+                evaluator.evaluate_block(@function.body.as(Block))
+            rescue exception : ReturnException
+                result = exception.value
+            end
+        end
 
         evaluator.pop_environment()
 
-        return result
+        return result.as(EvaluatorValue) if result != nil
+        return UnsetValue.new()
     end
 
     def to_s(io)
-        io << "anonymous_function(#{@anonymous})"
+        io << "function<#{@function}>"
     end
 end
 
-#class PropertyValue < EvaluatorValue
+class DynamicProperty
+    property do_get : Callable | Nil = nil
+    property do_set : Callable | Nil = nil
+    property do_call : Callable | Nil = nil
+
+    def getter(blame : SourceElement) : Callable
+        return @do_call if @do_call
+        return @do_get if @do_get
+
+        blame.error("Property does not define 'get'")
+    end
+
+    def setter(blame : SourceElement) : Callable
+        return @do_set if @do_set
+        
+        blame.error("Property does not define 'set'")
+    end
+
+    def caller(blame : SourceElement) : Callable
+        return @do_call if @do_call
+
+        blame.error("Property is not callable")
+    end
+
+    def get(evaluator : Evaluator, this : ObjectValue, blame : SourceElement) : EvaluatorValue
+        
+        return @value if @value
+
+        blame.error("Undefined property")
+    end
+
+    def set(evaluator : Evaluator, this : ObjectValue, blame : SourceElement, value : EvaluatorValue)
+        if @do_set
+            @do_set.call(evaluator, blame, [this, value])
+        elsif @value != nil
+            @value = value
+        else
+            blame.error("Undefined property")
+        end
+    end
+
+    def get_callable(evaluator : Evaluator, this : ObjectValue, blame : SourceElement) : Callable
+        if @do_call
+            return @do_call
+        elsif @value != nil && @value.is_a?(Callable)
+            return @value
+        else
+            this.error("")
+        end
+
+    end
+end
 
 class ObjectValue < EvaluatorValue
-    getter properties = {} of EvaluatorValue => EvaluatorValue
+    getter properties = {} of String => EvaluatorValue | DynamicProperty
 
     def truthy?
         return true
     end
 
-    def has_key?(name : EvaluatorValue)
+    def has_key?(name : String)
         return @properties.has_key?(name)
     end
 
-    def define_property()
+    def get(evaluator : Evaluator, blame : SourceElement, name : String) : EvaluatorValue
+        if property = @properties[name]?
+            if property.is_a?(DynamicProperty)
+                dynamic = property.as(DynamicProperty)
+
+                if dynamic.do_call
+                    return dynamic.do_call.as(Callable).call(evaluator, blame, [self] of EvaluatorValue)
+                elsif dynamic.do_get
+                    return dynamic.do_get.as(Callable).call(evaluator, blame, [self] of EvaluatorValue)
+                else
+                    blame.error("Dynamic property does not define 'get'")
+                end
+            else
+                return property.as(EvaluatorValue)
+            end
+        end
+
+        blame.error("Undefined property")
+    end
+
+    def set(evaluator : Evaluator, blame : SourceElement, name : String, value : EvaluatorValue)
+        if property = @properties[name]?
+            if property.is_a?(DynamicProperty)
+                dynamic = property.as(DynamicProperty)
+
+                if dynamic.do_set
+                    dynamic.do_set.as(Callable).call(evaluator, blame, [self, value] of EvaluatorValue)
+                else
+                    blame.error("Dynamic property does not define 'get'")
+                end
+            else
+                @properties[name] = value
+            end
+        end
+
+        blame.error("Undefined property")
+    end
+
+    def get_callable(evaluator : Evaluator, blame : SourceElement, name : String) : Callable
+        if property = @properties[name]?
+            if property.is_a?(DynamicProperty)
+                dynamic = property.as(DynamicProperty)
+
+                if dynamic.do_call
+                    return dynamic.do_call.as(Callable)
+                elsif dynamic.do_get
+                    return dynamic.do_get.as(Callable).call(evaluator, blame, [self] of EvaluatorValue).as(Callable)
+                else
+                    blame.error("Dynamic property does not define 'get' while attempting to 'call' the property")
+                end
+            else
+                return property.as(Callable)
+            end
+        end
+
+        blame.error("Undefined property")
+    end
+
+    def define_static_property(name : String, value : EvaluatorValue)
+        @properties[name] = value
+    end
+
+    def define_dynamic_property(name : String, blame : SourceElement, descriptor : ObjectValue)
+        get = descriptor.properties["get"]?
+        set = descriptor.properties["set"]?
+        call = descriptor.properties["call"]?
+
+        value = descriptor.properties["value"]?
+
+        if value
+            define_static_property(name, value.as(EvaluatorValue))
+        else
+            property = Property.new()
+
+            if get
+                blame.error("'Get' accessor must be callable") if !get.is_a?(Callable)
+                property.do_get = get.as(Callable)
+            end
+
+            if set
+                blame.error("'Set' accessor must be callable") if !set.is_a?(Callable)
+                property.do_set = set.as(Callable)
+            end
+
+            if call
+                blame.error("'Call' accessor must be callable") if !call.is_a?(Callable)
+                property.do_call = call.as(Callable)
+            end
+            
+            @properties[name] = property
+        end
+    end
+
+    def define_method(name : EvaluatorValue, blame : SourceElement, target : Callable)
+        property = Property.new()
+
+        property.do_call = target
+
+        @properties[name] = property
     end
 
     #abstract def set_item(key : EvaluatorValue, value : EvaluatorValue)
@@ -126,6 +291,23 @@ class ArrayValue < ObjectValue
     def initialize
     end
 
+    def initialize(@elements)
+    end
+
+    def truthy?
+        return true
+    end
+
+    def push(value : EvaluatorValue)
+        @elements << value
+    end
+
+    def length
+        return @elements.size
+    end
+
+    def at(index : Int32)
+    end
     
 end
 
@@ -198,9 +380,9 @@ class Evaluator
         return @current_environment
     end
 
-    def puts_fn(evaluator : Evaluator, blame : SourceElement, parameters : Array(ExpressionNode)) : EvaluatorValue
+    def puts_fn(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
         parameters.each do |parameter|
-            puts "#{parameter}: #{evaluate_expression(parameter)}"
+            puts "#{parameter}"
         end
 
         return UnsetValue.new().as(EvaluatorValue)
@@ -211,7 +393,7 @@ class Evaluator
 
         @current_environment = @global_environment
 
-        @current_environment.set("puts", NativeFunction.new(->puts_fn(Evaluator, SourceElement, Array(ExpressionNode))))
+        @current_environment.set("puts", NativeFunction.new(->puts_fn(Evaluator, SourceElement, Array(EvaluatorValue))))
     end
 
     def evaluate_identifer(expression : IdentifierExpression) : EvaluatorValue
@@ -301,6 +483,12 @@ class Evaluator
 
     def evaluate_binary(expression : BinaryExpression) : EvaluatorValue
         case expression.operator.value
+        when .dot?
+            name = expression.right.as(IdentifierExpression).value
+
+            object = evaluate_expression_typed(expression.left, ObjectValue)
+
+            return object.get(self, expression, name)
         when .plus?
             binary_integer_op(left + right)
         when .minus?
@@ -336,11 +524,24 @@ class Evaluator
     end
 
     def evaluate_call(expression : CallExpression) : EvaluatorValue
-        target = evaluate_expression_typed(expression.target, Callable)
+        if expression.target.is_a?(BinaryExpression) && expression.target.as(BinaryExpression).operator.value.dot?
+            access = expression.target.as(BinaryExpression)
 
-        puts "Call to #{target}"
+            object = evaluate_expression_typed(access.left, ObjectValue)
+            name = access.right.as(IdentifierExpression).value
 
-        return target.call(self, expression, expression.parameters)
+            target = object.get_callable(self, expression, name)
+        else
+            target = evaluate_expression_typed(expression.target, Callable)
+        end
+
+        parameters = [] of EvaluatorValue
+
+        expression.parameters.each do |parameter|
+            parameters << evaluate_expression(parameter)
+        end
+
+        return target.call(self, expression, parameters)
     end
 
     def evaluate_array_literal(expression : ArrayLiteralExpression)
@@ -388,12 +589,34 @@ class Evaluator
         raise Exception.new("Unimplemented expression type: #{expression}")
     end
 
+    def evaluate_function_definition(definition : FunctionDefinintion)
+        function = UserFunction.new(definition)
+
+        @current_environment.set_local(definition.name.value, function)
+    end
+
+    def evaluate_return(return_ : ReturnStatement)
+        # funky name since "return" is a keyword
+
+        result = nil
+
+        if return_.value
+            result = evaluate_expression(return_.value.as(ExpressionNode))
+        end
+
+        raise ReturnException.new(result)
+    end
+
     def evaluate_statement(statement : StatementNode)
         case statement
         when .is_a?(ExpressionStatement)
             value = evaluate_expression(statement.as(ExpressionStatement).value)
 
             #puts "#{statement.as(ExpressionStatement).value}: #{value}"
+        when .is_a?(FunctionDefinintion)
+            evaluate_function_definition(statement.as(FunctionDefinintion))
+        when .is_a?(ReturnStatement)
+            evaluate_return(statement.as(ReturnStatement))
         end
     end
 
