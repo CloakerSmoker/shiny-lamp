@@ -1,22 +1,22 @@
 # aaa
 
-TODO: Write a description here
+An independent implementation of AHK v2, without a specific dependency on Windows or Linux (for now).
 
 ## Installation
 
-TODO: Write installation instructions here
+Not to be installed yet.
 
 ## Usage
 
-TODO: Write usage instructions here
+Not to be used yet.
 
 ## Development
 
-TODO: Write development instructions here
+Not recommended.
 
 ## Contributing
 
-1. Fork it (<https://github.com/your-github-user/aaa/fork>)
+1. Fork it (<https://github.com/CloakerSmoker/shiny-lamp/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
@@ -24,4 +24,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [CloakerSmoker](https://github.com/your-github-user) - creator and maintainer
+- [CloakerSmoker](https://github.com/CloakerSmoker) - creator and maintainer
