@@ -25,6 +25,53 @@ class ExpressionStatement < StatementNode
     end
 end
 
+class FunctionDefinintion < StatementNode
+    getter name : IdentifierToken
+    getter parameters : Array(IdentifierExpression)
+
+    getter body : Block
+
+    def initialize(@name, @parameters, @body)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << @name.value << "("
+
+        @parameters.each_with_index do |parameter, index|
+            io << ", " if index != 0
+
+            io << parameter.value
+        end
+
+        io << ") "
+
+        @body.to_s_indent(io, level)
+    end
+end
+
+class ReturnStatement < StatementNode
+    getter value : ExpressionNode | Nil
+
+    def initialize
+        @value = nil
+    end
+
+    def initialize(@value)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << "return"
+
+        if @value != nil
+            io << " " << @value
+        end
+
+        io << "\n"
+    end
+end
+
 class Block
     getter statements : Array(StatementNode)
 

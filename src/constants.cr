@@ -5,6 +5,8 @@ enum Keyword
     Loop
     Continue
     Break
+
+    Return
 end
 
 enum Marker
