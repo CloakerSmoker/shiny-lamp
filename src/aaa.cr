@@ -44,5 +44,5 @@ end
 require "./constants.cr"
 require "./error.cr"
 require "./tokenizer.cr"
-require "./parser.cr"
-require "./evaluator.cr"
+require "./parser/parser.cr"
+require "./evaluator/evaluator.cr"
