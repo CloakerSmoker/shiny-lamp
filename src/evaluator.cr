@@ -120,53 +120,6 @@ class DynamicProperty
     property do_get : Callable | Nil = nil
     property do_set : Callable | Nil = nil
     property do_call : Callable | Nil = nil
-
-    def getter(blame : SourceElement) : Callable
-        return @do_call if @do_call
-        return @do_get if @do_get
-
-        blame.error("Property does not define 'get'")
-    end
-
-    def setter(blame : SourceElement) : Callable
-        return @do_set if @do_set
-        
-        blame.error("Property does not define 'set'")
-    end
-
-    def caller(blame : SourceElement) : Callable
-        return @do_call if @do_call
-
-        blame.error("Property is not callable")
-    end
-
-    def get(evaluator : Evaluator, this : ObjectValue, blame : SourceElement) : EvaluatorValue
-        
-        return @value if @value
-
-        blame.error("Undefined property")
-    end
-
-    def set(evaluator : Evaluator, this : ObjectValue, blame : SourceElement, value : EvaluatorValue)
-        if @do_set
-            @do_set.call(evaluator, blame, [this, value])
-        elsif @value != nil
-            @value = value
-        else
-            blame.error("Undefined property")
-        end
-    end
-
-    def get_callable(evaluator : Evaluator, this : ObjectValue, blame : SourceElement) : Callable
-        if @do_call
-            return @do_call
-        elsif @value != nil && @value.is_a?(Callable)
-            return @value
-        else
-            this.error("")
-        end
-
-    end
 end
 
 class ObjectValue < EvaluatorValue
@@ -185,10 +138,10 @@ class ObjectValue < EvaluatorValue
             if property.is_a?(DynamicProperty)
                 dynamic = property.as(DynamicProperty)
 
-                if dynamic.do_call
-                    return dynamic.do_call.as(Callable).call(evaluator, blame, [self] of EvaluatorValue)
-                elsif dynamic.do_get
+                if dynamic.do_get
                     return dynamic.do_get.as(Callable).call(evaluator, blame, [self] of EvaluatorValue)
+                elsif dynamic.do_call
+                    return dynamic.do_call.as(Callable).call(evaluator, blame, [self] of EvaluatorValue)
                 else
                     blame.error("Dynamic property does not define 'get'")
                 end
@@ -252,7 +205,7 @@ class ObjectValue < EvaluatorValue
         if value
             define_static_property(name, value.as(EvaluatorValue))
         else
-            property = Property.new()
+            property = DynamicProperty.new()
 
             if get
                 blame.error("'Get' accessor must be callable") if !get.is_a?(Callable)
@@ -273,12 +226,44 @@ class ObjectValue < EvaluatorValue
         end
     end
 
-    def define_method(name : EvaluatorValue, blame : SourceElement, target : Callable)
-        property = Property.new()
+    def do_method_get(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
+
+    end
+
+    def define_method(name : String, target : Callable)
+        property = DynamicProperty.new()
 
         property.do_call = target
+        property.do_get = NativeFunction.new(
+            ->(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue {
+                return target
+            }
+        )
 
         @properties[name] = property
+    end
+
+    def do_define_property(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
+        blame.error("Incorrect number of parameters passed to function") if parameters.size != 3
+
+        blame.error("'this' parameter must be an object") if !parameters[0].is_a?(ObjectValue)
+        blame.error("First parameter must be a property name") if !parameters[1].is_a?(StringValue)
+        blame.error("Second property must be a property descriptor") if !parameters[2].is_a?(ObjectValue)
+
+        this = parameters[0].as(ObjectValue)
+        name = parameters[1].as(StringValue).value
+        descriptor = parameters[2].as(ObjectValue)
+
+        this.define_dynamic_property(name, blame, descriptor)
+
+        return this.as(EvaluatorValue)
+    end
+
+    def initialize
+        define_property_fn = NativeFunction.new(->do_define_property(Evaluator, SourceElement, Array(EvaluatorValue)))
+
+        define_method("DefineProp", define_property_fn)
+
     end
 
     #abstract def set_item(key : EvaluatorValue, value : EvaluatorValue)
@@ -524,6 +509,8 @@ class Evaluator
     end
 
     def evaluate_call(expression : CallExpression) : EvaluatorValue
+        parameters = [] of EvaluatorValue
+
         if expression.target.is_a?(BinaryExpression) && expression.target.as(BinaryExpression).operator.value.dot?
             access = expression.target.as(BinaryExpression)
 
@@ -531,11 +518,13 @@ class Evaluator
             name = access.right.as(IdentifierExpression).value
 
             target = object.get_callable(self, expression, name)
+
+            # prepend the `this` parameter
+
+            parameters << object
         else
             target = evaluate_expression_typed(expression.target, Callable)
         end
-
-        parameters = [] of EvaluatorValue
 
         expression.parameters.each do |parameter|
             parameters << evaluate_expression(parameter)
@@ -549,7 +538,16 @@ class Evaluator
     end
 
     def evaluate_object_literal(expression : ObjectLiteralExpression)
+        result = ObjectValue.new()
 
+        expression.values.each do |(key_node, value_node)|
+            key = evaluate_expression_typed(key_node, StringValue)
+            value = evaluate_expression(value_node)
+
+            result.define_static_property(key.value, value)
+        end
+
+        return result
     end
 
     def evaluate_anonymous_function(expression : AnonymousFunctionExpression)
@@ -584,6 +582,8 @@ class Evaluator
             return evaluate_call(expression.as(CallExpression))
         when .is_a?(AnonymousFunctionExpression)
             return evaluate_anonymous_function(expression.as(AnonymousFunctionExpression))
+        when .is_a?(ObjectLiteralExpression)
+            return evaluate_object_literal(expression.as(ObjectLiteralExpression))
         end
 
         raise Exception.new("Unimplemented expression type: #{expression}")
