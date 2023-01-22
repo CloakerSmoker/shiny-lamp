@@ -16,6 +16,16 @@
 ## Parsing
 
 * Loops
+  * ~~`loop`~~
+  * ~~`continue`~~ (needs label support)
+  * ~~`break`~~ (needs label support)
+  * ~~`while`~~
+  * `for` (related: enumerators)
+  * `loop parse`
+  * `until`
+* `switch`
+* labels
+* `goto`
 * Classes
 * Hotkeys
 * Hotstrings
@@ -33,6 +43,14 @@
 
 ## Evaluating
 
+* Loops
+  * `loop`
+  * `continue`
+  * `break`
+  * `while`
+  * `for` (related: enumerators)
+  * `loop parse`
+  * `until`
 * Array literals
 * Dynamic properties
 * Inheritance

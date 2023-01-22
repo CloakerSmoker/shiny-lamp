@@ -333,3 +333,84 @@ class GroupExpression < ExpressionNode
         io << ")"
     end
 end
+
+class LoopStatement < StatementNode
+    getter count : ExpressionNode | Nil = nil
+    getter body : Block
+
+    def initialize(@count, @body)
+    end
+
+    def initialize(@body)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+
+        io << "loop "
+
+        if @count != nil
+            io << @count << " "
+        end
+
+        @body.to_s_indent(io, level)
+    end
+end
+
+class WhileLoopStatement < StatementNode
+    getter condition : ExpressionNode | Nil
+    getter body : Block
+
+    def initialize(@condition, @body)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+
+        io << "while " << @condition << " "
+
+        @body.to_s_indent(io, level)
+    end
+end
+
+class ContinueStatement < StatementNode
+    getter label : IdentifierExpression | Nil = nil
+
+    def initialize(@label)
+    end
+
+    def initialize
+    end
+    
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << "continue"
+
+        if @label
+            io << " " << @label.as(IdentifierExpression).value
+        end
+
+        io << "\n"
+    end
+end
+
+class BreakStatement < StatementNode
+    getter label : IdentifierExpression | Nil = nil
+
+    def initialize(@label)
+    end
+
+    def initialize
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << "break"
+
+        if @label
+            io << " " << @label.as(IdentifierExpression).value
+        end
+
+        io << "\n"
+    end
+end

@@ -77,9 +77,44 @@ class Parser
         return ReturnStatement.new(value)
     end
 
+    def parse_loop : LoopStatement
+        begin
+            count = parse_expression()
+        rescue
+            count = nil
+        end
+
+        body = parse_block()
+
+        return LoopStatement.new(count, body)
+    end
+
+    def parse_while_loop : WhileLoopStatement
+        condition = parse_expression()
+        body = parse_block()
+
+        return WhileLoopStatement.new(condition, body)
+    end
+
+    def parse_continue : BreakStatement
+        return BreakStatement.new()
+    end
+
+    def parse_break : BreakStatement
+        return BreakStatement.new()
+    end
+
     def parse_statement : StatementNode
         if next_token_matches { |t| t.as(KeywordToken).value.if? }
             return parse_if_statement().as(StatementNode)
+        elsif next_token_matches { |t| t.as(KeywordToken).value.loop? }
+            return parse_loop()
+        elsif next_token_matches { |t| t.as(KeywordToken).value.while? }
+            return parse_loop()
+        elsif next_token_matches { |t| t.as(KeywordToken).value.continue? }
+            return parse_continue()
+        elsif next_token_matches { |t| t.as(KeywordToken).value.break? }
+            return parse_break()
         elsif next_token_matches { |t| t.as(KeywordToken).value.return? }
             return parse_return().as(StatementNode)
         else

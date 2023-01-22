@@ -3,6 +3,7 @@ enum Keyword
     Else
 
     Loop
+    While
     Continue
     Break
 
