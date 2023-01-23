@@ -85,8 +85,13 @@ class Parser
         end
 
         body = parse_block()
+        postcondition = nil
 
-        return LoopStatement.new(count, body)
+        if next_token_matches { |t| t.as(KeywordToken).value.until? }
+            postcondition = parse_expression()
+        end
+
+        return LoopStatement.new(count, body, postcondition)
     end
 
     def parse_while_loop : WhileLoopStatement

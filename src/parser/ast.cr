@@ -338,7 +338,11 @@ class LoopStatement < StatementNode
     getter count : ExpressionNode | Nil = nil
     getter body : Block
 
-    def initialize(@count, @body)
+    # fancy name since "until" is apparently a keyword
+
+    getter postcondition : ExpressionNode | Nil = nil
+
+    def initialize(@count, @body, @postcondition)
     end
 
     def initialize(@body)
@@ -354,11 +358,16 @@ class LoopStatement < StatementNode
         end
 
         @body.to_s_indent(io, level)
+
+        if @postcondition != nil
+            indent(io, level)
+            io << "until " << @postcondition << "\n"
+        end
     end
 end
 
 class WhileLoopStatement < StatementNode
-    getter condition : ExpressionNode | Nil
+    getter condition : ExpressionNode
     getter body : Block
 
     def initialize(@condition, @body)

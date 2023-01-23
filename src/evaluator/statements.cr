@@ -1,3 +1,10 @@
+
+class ContinueException < Exception
+end
+
+class BreakException < Exception
+end
+
 class Evaluator
     def evaluate_function_definition(definition : FunctionDefinintion)
         function = UserFunction.new(definition)
@@ -21,8 +28,53 @@ class Evaluator
         count = -1
 
         if loop_.count
-            count = evaluate_expression(loop_.count.as(ExpressionNode))
+            count = evaluate_expression_typed(loop_.count.as(ExpressionNode), IntegerValue).value
         end
+
+        index = 1
+
+        while index != count
+            @current_environment.set("A_Index", IntegerValue.new(index))
+            index += 1
+
+            begin
+                evaluate_block(loop_.body)
+            rescue ContinueException
+                # pass
+            rescue BreakException
+                break
+            end
+
+            if loop_.postcondition
+                postcondition = evaluate_expression(loop_.postcondition.as(ExpressionNode))
+
+                break if postcondition.truthy?
+            end
+        end
+
+        @current_environment.unset("A_Index")
+    end
+
+    def evaluate_while_loop(while_ : WhileLoopStatement)
+        index = 1
+
+        loop do
+            @current_environment.set("A_Index", IntegerValue.new(index))
+
+            condition = evaluate_expression(while_.condition)
+
+            break if !condition.truthy?
+
+            begin
+                evaluate_block(while_.body)
+            rescue ContinueException
+                # pass
+            rescue BreakException
+                break
+            end
+        end
+
+        @current_environment.unset("A_Index")
     end
 
     def evaluate_statement(statement : StatementNode)
@@ -35,6 +87,14 @@ class Evaluator
             evaluate_function_definition(statement.as(FunctionDefinintion))
         when .is_a?(ReturnStatement)
             evaluate_return(statement.as(ReturnStatement))
+        when .is_a?(LoopStatement)
+            evaluate_loop(statement.as(LoopStatement))
+        when .is_a?(WhileLoopStatement)
+            evaluate_while_loop(statement.as(WhileLoopStatement))
+        when .is_a?(ContinueStatement)
+            raise ContinueException.new()
+        when .is_a?(BreakStatement)
+            raise BreakException.new()
         end
     end
 
