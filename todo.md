@@ -11,6 +11,7 @@
 * Continuation sections (these made it to v2? for real?)
 * Floats
 * `#Include`
+* Single quote strings
 * Escapes in strings
 
 ## Parsing
@@ -54,7 +55,12 @@
 * Array literals
 * Dynamic properties
 * Inheritance
+* Prototypes
+* Methods
+  * `this` parameter
+  * `super`
 * Substitution
+  * Including a.%b%, where we don't resolve to a variable
 * Most operators
 * `VarRef`-s
 * Variadic functions (anonymous and regular)

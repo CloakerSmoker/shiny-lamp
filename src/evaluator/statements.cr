@@ -17,6 +17,14 @@ class Evaluator
         raise ReturnException.new(result)
     end
 
+    def evaluate_loop(loop_ : LoopStatement)
+        count = -1
+
+        if loop_.count
+            count = evaluate_expression(loop_.count.as(ExpressionNode))
+        end
+    end
+
     def evaluate_statement(statement : StatementNode)
         case statement
         when .is_a?(ExpressionStatement)
