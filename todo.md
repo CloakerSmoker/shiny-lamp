@@ -16,64 +16,78 @@
 
 ## Parsing
 
-* Loops
+* Control flow
   * ~~`loop`~~
-  * ~~`continue`~~ (needs label support)
-  * ~~`break`~~ (needs label support)
+    * ~~`until`~~
+    * `loop parse`
+  * `continue`
+  * `break`
   * ~~`while`~~
   * `for` (related: enumerators)
-  * `loop parse`
-  * `until`
-* `switch`
-* labels
-* `goto`
-* Classes
+  * `switch`
+  * Exceptions
+    * Throw
+    * Try
+    * Catch
+  * Goto
+    * labels
+* `class`
+  * `extends`
+  * `static`
 * Hotkeys
 * Hotstrings
-* Implicit concatenation
-* Variadic functions (anonymous and regular)
+* Expressions
+  * Implicit concatenation
+  * Variadic calls
+  * Implicit function call statements (`MsgBox "AAAA"`)
+  * Floats
+* Functions
+  * Variadic definitions (anonymous and regular)
+  * Parameters with default values
 * ByRef parameters (do these still exist?)
-* Parameters with default values
 * Floating blocks
 * Directives
-* Implicit function call statements (`MsgBox "AAAA"`)
-* Floats
 * `global`-s
-* `static` inside functions
-* `try`/`catch`/exceptions
 
 ## Evaluating
 
-* Loops
-  * `loop`
+* Control flow
+  * ~~`loop`~~
+    * ~~`until`~~
+    * `loop parse`
   * `continue`
   * `break`
-  * `while`
+  * ~~`while`~~
   * `for` (related: enumerators)
-  * `loop parse`
-  * `until`
+  * `switch`
+  * Exceptions
+    * Throw
+    * Try
+    * Catch
+* Functions
+  * Variadic (anonymous and regular)
+  * ByRef parameters (do these still exist?)
+  * Parameters with default values
+* OOP
+  * Dynamic properties
+  * Inheritance
+  * Methods
+    * `this` parameter
+    * `super`
+  * Prototypes
+  * `__Item` property
+  * `is`/types
+* Scope
+  * Substitution
+    * Including a.%b%, where we don't resolve to a variable
+  * `VarRef`-s
+  * `global`-s
 * Array literals
-* Dynamic properties
-* Inheritance
-* Prototypes
-* Methods
-  * `this` parameter
-  * `super`
-* Substitution
-  * Including a.%b%, where we don't resolve to a variable
 * Most operators
-* `VarRef`-s
-* Variadic functions (anonymous and regular)
-* ByRef parameters (do these still exist?)
-* Parameters with default values
 * Directives
 * Floats
 * Maps
-* `is`/types
 * `Array()`/`Map()` constructor functions
-* `global`-s
-* Exceptions
-* `__Item` property
 
 ## Built in functions
 
