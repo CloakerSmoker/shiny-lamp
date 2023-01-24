@@ -2,6 +2,12 @@ abstract class EvaluatorValue
     abstract def truthy?
 end
 
+class Evaluator
+    def value_equals?(left : EvaluatorValue, right : EvaluatorValue)
+        return "#{left}" == "#{right}"
+    end
+end
+
 class StringValue < EvaluatorValue
     getter value : String
 

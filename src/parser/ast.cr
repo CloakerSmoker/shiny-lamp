@@ -119,6 +119,44 @@ class IfStatement < StatementNode
     end
 end
 
+class SwitchStatement < StatementNode
+    getter value : ExpressionNode
+#    getter case_sensitive : Bool = 
+
+    getter cases : Array(Tuple(Array(ExpressionNode), Block))
+    getter default_case : Block | Nil = nil
+
+    def initialize(@value, @cases, @default_case)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << "switch " << @value << " {\n"
+
+        @cases.each do |(values, body)|
+            indent(io, level + 1)
+            io << "case "
+
+            values.each_with_index do |value, index|
+                io << ", " if index != 0
+
+                io << value
+            end
+
+            io << ": "
+            body.to_s_indent(io, level + 1)
+        end
+
+        if @default_case
+            indent(io, level + 1)
+            io << "default: "
+            @default_case.as(Block).to_s_indent(io, level + 1)
+        end
+        
+        indent(io, level)
+        io << "}\n"
+    end
+end
 
 class ExpressionNode < SourceElement
     def initialize

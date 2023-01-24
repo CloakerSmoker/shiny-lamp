@@ -1,6 +1,8 @@
 enum Keyword
     If
     Else
+    Switch
+    Case
 
     Loop
     Until

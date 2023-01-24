@@ -4,6 +4,8 @@ class Parser
             statements = [] of StatementNode
 
             loop do
+                break if next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
+
                 statements << parse_statement()
                 
                 break if next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
@@ -37,6 +39,64 @@ class Parser
         end
 
         return IfStatement.new(branches, else_branch)
+    end
+
+    def parse_case_body : Block
+        expect("Expected ':' for 'case'/'default' body") { |t| t.as(SymbolToken).value.colon? }
+
+        if peek_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
+            return parse_block()
+        else
+            statements = [] of StatementNode
+
+            loop do
+                break if peek_token_matches { |t| t.as(KeywordToken).value.case? }
+                break if peek_token_matches { |t| t.as(IdentifierToken).value == "default" }
+                break if peek_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
+
+                statements << parse_statement()
+            end
+
+            return Block.new(statements)
+        end
+    end
+
+    def parse_switch_statement
+        cases = [] of Tuple(Array(ExpressionNode), Block)
+        default_case = nil
+
+        value = parse_expression()
+
+        expect("Expected opening '{' for 'switch' body") { |t| t.as(SymbolToken).value.open_bracket? }
+
+        loop do
+            if next_token_matches { |t| t.as(KeywordToken).value.case? }
+                values = [] of ExpressionNode
+
+                loop do
+                    values << parse_expression()
+
+                    next if next_token_matches { |t| t.as(SymbolToken).value.comma? }
+                    break if peek_token_matches { |t| t.as(SymbolToken).value.colon? }
+
+                    get_next_token().error("Unexpected token in case")
+                end
+                
+                body = parse_case_body()
+
+                cases << {values, body}
+            elsif next_token_matches { |t| t.as(IdentifierToken).value == "default" }
+                # 'default' is a context sensitive keyword
+
+                default_case = parse_case_body()
+            elsif next_token_matches { |t| t.as(SymbolToken).value.close_bracket? }
+                break
+            else
+                get_next_token().error("Unexpected token in switch statement")
+            end
+        end
+
+        return SwitchStatement.new(value, cases, default_case)
     end
 
     def parse_function_definition : FunctionDefinintion
@@ -112,6 +172,8 @@ class Parser
     def parse_statement : StatementNode
         if next_token_matches { |t| t.as(KeywordToken).value.if? }
             return parse_if_statement().as(StatementNode)
+        elsif next_token_matches { |t| t.as(KeywordToken).value.switch? }
+            return parse_switch_statement()
         elsif next_token_matches { |t| t.as(KeywordToken).value.loop? }
             return parse_loop()
         elsif next_token_matches { |t| t.as(KeywordToken).value.while? }

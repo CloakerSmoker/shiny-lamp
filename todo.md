@@ -2,7 +2,10 @@
 
 ## Overall
 
-* Split into more files
+* ~~Split into more files~~
+* Actually learn crystal
+  * Surely I don't need to `.as(Whatever)` right after a `.is_a?(Whatever)`
+  * `loop do` but for `{ Statement* }` kind of structures
 
 ## Tokenizing
 
@@ -20,8 +23,8 @@
   * ~~`loop`~~
     * ~~`until`~~
     * `loop parse`
-  * `continue`
-  * `break`
+  * ~~`continue`~~
+  * ~~`break`~~
   * ~~`while`~~
   * `for` (related: enumerators)
   * `switch`
@@ -48,6 +51,8 @@
 * Floating blocks
 * Directives
 * `global`-s
+* Errors
+  * For the top level "parse_statement", we should remember why the input failed to be parsed as the various ambiguous structures, and report them all, instead of just showing the expression parser error.
 
 ## Evaluating
 
@@ -55,11 +60,15 @@
   * ~~`loop`~~
     * ~~`until`~~
     * `loop parse`
-  * `continue`
-  * `break`
+  * ~~`continue`~~
+  * ~~`break`~~
   * ~~`while`~~
   * `for` (related: enumerators)
+  * ~~`if`~~
   * `switch`
+    * Labels in cases?
+    * Goto between cases?
+    * Why does `goto` still exist?!
   * Exceptions
     * Throw
     * Try
