@@ -218,6 +218,10 @@ class Parser
 
         unfreeze(before_operator)
 
+        # we have parsed one entire expression
+        
+        #begin
+
         return left
     end
     def parse_expression

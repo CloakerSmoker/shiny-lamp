@@ -169,6 +169,38 @@ class Parser
         return BreakStatement.new()
     end
 
+    def is_valid_implicit_call_target?(expression : ExpressionNode)
+        case expression
+        when .is_a?(IdentifierExpression)
+            return true
+        when .is_a?(BinaryExpression)
+            binary = expression.as(BinaryExpression)
+
+            return binary.operator.value.dot? && is_valid_implicit_call_target?(binary.left)
+        end
+
+        return false
+    end
+
+    def is_context_final_in_line?(context : SourceContext)
+        line_context = context.lines[0]
+        line = line_context.line
+
+        token_start_in_line = line_context.body_start - line.start_offset
+        token_end_in_line = token_start_in_line + line_context.length
+
+        if token_end_in_line < line.length
+            line_text = line.source[line.start_offset .. line.end_offset]
+            after = line_text[token_end_in_line .. line.length]
+
+            puts "after: '#{after}'"
+
+            return after.blank?()
+        else
+            return true
+        end
+    end
+
     def parse_statement : StatementNode
         if next_token_matches { |t| t.as(KeywordToken).value.if? }
             return parse_if_statement().as(StatementNode)
@@ -193,18 +225,42 @@ class Parser
                 unfreeze(before_function_definition)
             end
 
-            expressions = [] of ExpressionNode
+            first = parse_expression()
 
-            loop do
-                expressions << parse_expression()
+            if is_valid_implicit_call_target?(first)
+                if peek_token_matches { |t| t.as(SymbolToken).value.comma? }
+                    get_next_token().error("Expected an implicit function call")
+                end
 
-                break if !next_token_matches { |t| t.as(SymbolToken).value.comma? }
-            end
+                parameters = [] of ExpressionNode
+                
+                if !is_context_final_in_line?(first.context)
+                    loop do
+                        parameter = parse_expression()
 
-            if expressions.size == 1
-                return ExpressionStatement.new(expressions[0])
+                        parameters << parameter
+
+                        break if is_context_final_in_line?(parameter.context)
+
+                        expect("Expected comma between implicit function call parameters") { |t| t.as(SymbolToken).value.comma? }
+                    end
+                end
+
+                return ExpressionStatement.new(CallExpression.new(first, parameters))
             else
-                return ExpressionStatement.new(GroupExpression.new(expressions))
+                expressions = [first] of ExpressionNode
+
+                loop do
+                    break if !next_token_matches { |t| t.as(SymbolToken).value.comma? }
+
+                    expressions << parse_expression()
+                end
+
+                if expressions.size == 1
+                    return ExpressionStatement.new(expressions[0])
+                else
+                    return ExpressionStatement.new(GroupExpression.new(expressions))
+                end
             end
         end
     end

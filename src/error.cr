@@ -194,6 +194,10 @@ end
 def notify_at_context(context : SourceContext, message : String, color : Symbol)
     lines = context.lines
 
+    if lines.size == 0
+        puts "Error: #{message}\n At EOF\n"
+    end
+
     first_line = lines[0].line.line_number
     is_linear = true
 

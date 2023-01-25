@@ -37,6 +37,8 @@ module Aaa
 
     e.evaluate_block(root_block)
   rescue se : SourceException
+    puts se.inspect_with_backtrace()
+
     notify_at_context(se.context, se.message.as(String), :red)
   end
 end

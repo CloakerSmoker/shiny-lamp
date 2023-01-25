@@ -42,7 +42,7 @@
 * Expressions
   * Implicit concatenation
   * Variadic calls
-  * Implicit function call statements (`MsgBox "AAAA"`)
+  * ~~Implicit function call statements (`MsgBox "AAAA"`)~~
   * Floats
 * Functions
   * Variadic definitions (anonymous and regular)
