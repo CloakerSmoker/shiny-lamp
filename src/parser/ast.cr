@@ -25,9 +25,83 @@ class ExpressionStatement < StatementNode
     end
 end
 
+class FunctionParameter
+end
+
+class NamedParameter < FunctionParameter
+    getter name : IdentifierExpression
+
+    def initialize(@name)
+    end
+
+    def to_s(io)
+        io << @name.value
+    end
+end
+
+class VariadicParameter < FunctionParameter
+    getter name : IdentifierExpression | Nil = nil
+
+    def initialize(@name)
+    end
+
+    def to_s(io)
+        if @name
+            io << @name.as(IdentifierExpression).value
+        end
+
+        io << "*"
+    end
+end
+
+class OptionalParameter < NamedParameter
+    # nil for "unset default" parameters
+    getter default_value : ExpressionNode | Nil = nil
+
+    def initialize(name, @default_value)
+        super(name)
+    end
+
+    def to_s(io)
+        io << @name.value
+
+        if @default_value
+            io << " := " << @default_value
+        else
+            io << "?"
+        end
+    end
+end
+
+class ReferenceParameter < NamedParameter
+    def to_s(io)
+        io << "&" << @name.value
+    end
+end
+
+class OptionalReferenceParameter < NamedParameter
+    # duplicated since no multiple inheritance, apparently
+    # nil for "unset default" parameters
+    getter default_value : ExpressionNode | Nil = nil
+
+    def initialize(name, @default_value)
+        super(name)
+    end
+
+    def to_s(io)
+        io << "&" << @name.value
+
+        if @default_value
+            io << " := " << @default_value
+        else
+            io << "?"
+        end
+    end
+end
+
 class FunctionDefinintion < StatementNode
     getter name : IdentifierToken
-    getter parameters : Array(IdentifierExpression)
+    getter parameters : Array(FunctionParameter)
 
     getter body : Block
 
@@ -41,7 +115,7 @@ class FunctionDefinintion < StatementNode
         @parameters.each_with_index do |parameter, index|
             io << ", " if index != 0
 
-            io << parameter.value
+            io << parameter
         end
 
         io << ") "

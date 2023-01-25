@@ -27,7 +27,7 @@
   * ~~`break`~~
   * ~~`while`~~
   * `for` (related: enumerators)
-  * `switch`
+  * ~~`switch`~~
   * Exceptions
     * Throw
     * Try
@@ -47,7 +47,7 @@
 * Functions
   * Variadic definitions (anonymous and regular)
   * Parameters with default values
-* ByRef parameters (do these still exist?)
+  * ByRef parameters (do these still exist?)
 * Floating blocks
 * Directives
 * `global`-s

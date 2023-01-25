@@ -99,22 +99,70 @@ class Parser
         return SwitchStatement.new(value, cases, default_case)
     end
 
+    def parse_function_parameter : FunctionParameter
+        is_reference = false
+
+        if next_token_matches { |t| t.as(SymbolToken).value.times? }
+            return VariadicParameter.new(nil)
+        elsif next_token_matches { |t| t.as(SymbolToken).value.and? }
+            is_reference = true
+        end
+
+        name_token = expect("Expected function parameter name") { |t| t.is_a?(IdentifierToken) }
+        name = IdentifierExpression.new(name_token.as(IdentifierToken))
+
+        if next_token_matches { |t| t.as(SymbolToken).value.times? }
+            if is_reference
+                name.error("Function parameter cannot be by reference and variadic")
+            end
+
+            return VariadicParameter.new(name)
+        elsif next_token_matches { |t| t.as(SymbolToken).value.question_mark? }
+            if is_reference
+                return OptionalReferenceParameter.new(name, nil)
+            else
+                return OptionalParameter.new(name, nil)
+            end
+        end
+
+        if next_token_matches { |t| t.as(SymbolToken).value.colon_equals? }
+            default_value = parse_expression()
+
+            if is_reference
+                return OptionalReferenceParameter.new(name, default_value)
+            else
+                return OptionalParameter.new(name, default_value)
+            end
+        end
+
+        if is_reference
+            return ReferenceParameter.new(name)
+        else
+            return NamedParameter.new(name)
+        end
+    end
+
     def parse_function_definition : FunctionDefinintion
         name = expect("Expected function name") { |t| t.is_a?(IdentifierToken) }
 
         expect("Expected open paren in function definition") { |t| t.as(SymbolToken).value.open_paren? }
 
-        parameters = [] of IdentifierExpression
+        parameters = [] of FunctionParameter
 
         loop do
             break if next_token_matches { |t| t.as(SymbolToken).value.close_paren? }
 
-            parameter = expect("Expected function parameter name") { |t| t.is_a?(IdentifierToken) }
-            parameters << IdentifierExpression.new(parameter.as(IdentifierToken))
+            parameter = parse_function_parameter
+            parameters << parameter
+
+            if parameter.is_a?(VariadicParameter)
+                expect("Expected end of parameter list after variadic parameter") { |t| t.as(SymbolToken).value.close_paren? }
+                break
+            end
 
             break if next_token_matches { |t| t.as(SymbolToken).value.close_paren? }
 
-            expect("Expected comma between function parameters") { |t| t.as(SymbolToken).value.close_paren? }
+            expect("Expected comma between function parameters") { |t| t.as(SymbolToken).value.comma? }
         end
 
         if !peek_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
@@ -222,6 +270,9 @@ class Parser
             begin
                 return parse_function_definition()
             rescue e : SourceException
+                puts "While parsing function definition: "
+                puts e.inspect_with_backtrace()
+
                 unfreeze(before_function_definition)
             end
 

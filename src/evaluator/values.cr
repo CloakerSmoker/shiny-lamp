@@ -85,17 +85,45 @@ class UserFunction < Callable
     end
 
     def call(evaluator : Evaluator, blame : SourceElement, parameters : Array(EvaluatorValue)) : EvaluatorValue
-        if parameters.size != @function.parameters.size
-            blame.error("Wrong number of parameters passed to function, expected #{@function.parameters.size}, got #{parameters.size}")
-        end
-
         environment = evaluator.push_environment()
 
-        parameters.each_with_index do |parameter, index|
-            formal_parameter = @function.parameters[index]
-            formal_parameter_name = formal_parameter.value
+        @function.parameters.each_with_index do |formal_parameter, index|
+            case formal_parameter
+            when .is_a?(OptionalParameter)
+                optional = formal_parameter.as(OptionalParameter)
 
-            environment.set_local(formal_parameter_name, parameter)
+                if index > parameters.size
+                    if optional.default_value
+                        value = evaluator.evaluate_expression(optional.default_value.as(ExpressionNode))
+                    else
+                        value = UnsetValue.new()
+                    end
+                else
+                    value = parameters[index]
+                end
+
+                environment.set_local(optional.name.value, value)
+            when .is_a?(ReferenceParameter)
+                # TODO
+            when .is_a?(OptionalReferenceParameter)
+                # TODO
+            when .is_a?(VariadicParameter)
+                variadic = formal_parameter.as(VariadicParameter)
+
+                if variadic.name
+                    value = ArrayValue.new(parameters[index..])
+
+                    environment.set_local(variadic.name.as(IdentifierExpression).value, value)
+                end
+            when .is_a?(NamedParameter)
+                if index > parameters.size
+                    blame.error("Not enough parameters passed to function")
+                end
+
+                named = formal_parameter.as(NamedParameter)
+
+                environment.set_local(named.name.value, parameters[index])
+            end
         end
 
         result = nil
@@ -299,4 +327,15 @@ class ArrayValue < ObjectValue
     def at(index : Int32)
     end
     
+    def to_s(io)
+        io << "["
+
+        @elements.each_with_index do |value, index|
+            io << ", " if index != 0
+
+            io << value
+        end
+
+        io << "]"
+    end
 end
