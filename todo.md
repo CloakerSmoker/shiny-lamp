@@ -45,9 +45,9 @@
   * ~~Implicit function call statements (`MsgBox "AAAA"`)~~
   * Floats
 * Functions
-  * Variadic definitions (anonymous and regular)
-  * Parameters with default values
-  * ByRef parameters (do these still exist?)
+  * ~~Variadic definitions (anonymous and regular)~~
+  * ~~Parameters with default values~~
+  * ~~ByRef parameters (do these still exist?)~~
 * Floating blocks
 * Directives
 * `global`-s
@@ -74,9 +74,10 @@
     * Try
     * Catch
 * Functions
-  * Variadic (anonymous and regular)
+  * ~~Variadic (anonymous and regular)~~
   * ByRef parameters (do these still exist?)
-  * Parameters with default values
+  * ~~Parameters with default values~~
+  * `Func` object fields for all functions
 * OOP
   * Dynamic properties
   * Inheritance
@@ -91,7 +92,7 @@
     * Including a.%b%, where we don't resolve to a variable
   * `VarRef`-s
   * `global`-s
-* Array literals
+* ~~Array literals~~
 * Most operators
 * Directives
 * Floats
