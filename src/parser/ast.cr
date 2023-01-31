@@ -535,3 +535,71 @@ class BreakStatement < StatementNode
         io << "\n"
     end
 end
+
+@[Flags]
+enum HotkeyModifiers
+    LeftWindows
+    RightWindows
+    Windows = LeftWindows | RightWindows
+
+    LeftControl
+    RightControl
+    Control = LeftControl | RightControl
+
+    LeftAlt
+    RightAlt
+    Alt = LeftAlt | RightAlt
+
+    LeftShift
+    RightShift
+    Shift = LeftShift | RightShift
+
+    Wildcard
+    Passthrough
+
+    Hook
+    Up
+end
+
+HotkeyModifierSymbols = {
+    Marker::Pound => HotkeyModifiers::Windows,
+    Marker::Not => HotkeyModifiers::Alt,
+    Marker::BitwiseXor => HotkeyModifiers::Control,
+    Marker::Plus => HotkeyModifiers::Shift,
+
+    Marker::Times => HotkeyModifiers::Wildcard,
+    Marker::BitwiseNot => HotkeyModifiers::Passthrough,
+    Marker::Dollar => HotkeyModifiers::Hook
+}
+
+HotkeyModifierSymbolsLeft = {
+    Marker::Pound => HotkeyModifiers::LeftWindows,
+    Marker::Not => HotkeyModifiers::LeftAlt,
+    Marker::BitwiseXor => HotkeyModifiers::LeftControl,
+    Marker::Plus => HotkeyModifiers::LeftShift
+}
+
+HotkeyModifierSymbolsRight = {
+    Marker::Pound => HotkeyModifiers::RightWindows,
+    Marker::Not => HotkeyModifiers::RightAlt,
+    Marker::BitwiseXor => HotkeyModifiers::RightControl,
+    Marker::Plus => HotkeyModifiers::RightShift
+}
+
+class HotkeyDefinition < StatementNode
+    getter modifiers : HotkeyModifiers = HotkeyModifiers::None
+    getter key_name : String
+    getter body : Block
+
+    def initialize(@modifiers, @key_name, @body)
+    end
+
+    def to_s_indent(io, level)
+        indent(io, level)
+        io << "{" << @modifiers << "} " << @key_name << "::"
+
+        body.to_s_indent(io, level)
+        
+        io << "\n"
+    end
+end

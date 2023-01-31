@@ -94,6 +94,9 @@ enum Marker
     CloseBracket
 
     FatArrow
+
+    Pound
+    Dollar
 end
 
 Symbols = [
@@ -178,7 +181,10 @@ Symbols = [
     {")", Marker::CloseParen},
 
     {"{", Marker::OpenBracket},
-    {"}", Marker::CloseBracket}
+    {"}", Marker::CloseBracket},
+
+    {"#", Marker::Pound},
+    {"$", Marker::Dollar}
 ]
 
 KeywordSymbols = {

@@ -217,6 +217,65 @@ class Parser
         return BreakStatement.new()
     end
 
+    def parse_hotkey : HotkeyDefinition
+
+        modifiers = HotkeyModifiers::None
+
+        next_is_left = false
+        left_token = nil
+
+        next_is_right = false
+        right_token = nil
+
+        loop do
+            
+            if left_token = next_token_matches { |t| t.as(SymbolToken).value.less? }
+                next_is_left = true
+            elsif right_token = next_token_matches { |t| t.as(SymbolToken).value.greater? }
+                next_is_right = true
+            elsif modifier_token = next_token_matches { |t| HotkeyModifierSymbols.has_key?(t.as(SymbolToken).value) }
+                modifer_symbol = modifier_token.as(SymbolToken)
+                modifer = modifer_symbol.value
+
+                if next_is_left
+                    if !HotkeyModifierSymbolsLeft.has_key?(modifer)
+                        modifer_symbol.error("Hotkey modifier has no 'left' variant")
+                    end
+
+                    modifiers |= HotkeyModifierSymbolsLeft[modifer]
+                elsif next_is_right
+                    if !HotkeyModifierSymbolsRight.has_key?(modifer)
+                        modifer_symbol.error("Hotkey modifier has no 'right' variant")
+                    end
+
+                    modifiers |= HotkeyModifierSymbolsRight[modifer]
+                else
+                    modifiers |= HotkeyModifierSymbols[modifer]
+                end
+
+                next_is_left = false
+                next_is_right = false
+            elsif next_token_matches { |t| t.as(IdentifierToken).value == "up" }
+                modifiers |= HotkeyModifiers::Up
+            else
+                break
+            end
+        end
+
+        key_name = expect("Expected hotkey key name") { |t| t.is_a?(IdentifierToken) }
+
+        expect("Expected '::' between hotkey key and body") { |t| t.as(SymbolToken).value.colon? }
+        expect("Expected '::' between hotkey key and body") { |t| t.as(SymbolToken).value.colon? }
+
+        if peek_token_matches { |t| t.as(SymbolToken).value.open_bracket? }
+            body = parse_block()
+        else
+            body = Block.new([parse_statement()])
+        end
+
+        return HotkeyDefinition.new(modifiers, key_name.as(IdentifierToken).value, body)
+    end
+
     def is_valid_implicit_call_target?(expression : ExpressionNode)
         case expression
         when .is_a?(IdentifierExpression)
@@ -271,6 +330,15 @@ class Parser
                 return parse_function_definition()
             rescue e : SourceException
                 puts "While parsing function definition: "
+                puts e.inspect_with_backtrace()
+
+                unfreeze(before_function_definition)
+            end
+
+            begin
+                return parse_hotkey()
+            rescue e : SourceException
+                puts "While parsing hotkey definition: "
                 puts e.inspect_with_backtrace()
 
                 unfreeze(before_function_definition)
