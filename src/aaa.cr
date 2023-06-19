@@ -27,15 +27,19 @@ module Aaa
 
     p = Parser.new(t)
 
-    root_block = p.parse_program()
+    expr = p.parse_expression()
 
-    puts "Root block:"
-    root_block.to_s_indent(STDOUT, 0)
-    puts "\n"
+    puts expr
 
-    e = Evaluator.new()
+    # root_block = p.parse_program()
 
-    e.evaluate_block(root_block)
+    # puts "Root block:"
+    # root_block.to_s_indent(STDOUT, 0)
+    # puts "\n"
+
+    # e = Evaluator.new()
+
+    # e.evaluate_block(root_block)
   rescue se : SourceException
     puts se.inspect_with_backtrace()
 

@@ -38,6 +38,9 @@
   * `extends`
   * `static`
 * Hotkeys
+  * ~~Basic combinations~~
+  * `&` chains
+  * Single line remaps
 * Hotstrings
 * Expressions
   * Implicit concatenation
