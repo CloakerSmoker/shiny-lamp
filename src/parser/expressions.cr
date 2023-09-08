@@ -219,8 +219,10 @@ class Parser
         unfreeze(before_operator)
 
         # we have parsed one entire expression
-
-        #peek_next_token().notify("aa")
+        
+        if binding_power == 0
+            #peek_next_token().notify("aa")
+        end
         
         #begin
 

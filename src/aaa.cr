@@ -16,7 +16,7 @@ module Aaa
 
         break if tk.is_a?(EndToken)
 
-        notify_at_context(tk.context, "aaa", :blue)
+        #notify_at_context(tk.context, "aaa", :blue)
       rescue unexpected : UnexpectedCharacterException
         puts "Unexpected character '#{unexpected.context.lines[0].get_body()}'"
         break
